@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Neon Ladder: Techno-Ice</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div id="game-root">
+      <canvas id="game-canvas" aria-label="Neon Ladder" role="img"></canvas>
+
+      <div id="ui-overlay">
+        <div id="platform-panel">
+          <div class="panel-label">PLATFORMS</div>
+          <div id="platform-icons" aria-live="polite"></div>
+        </div>
+
+        <div id="score-panel">
+          <div class="panel-label">ALTITUDE</div>
+          <div id="score-value">0.000</div>
+        </div>
+
+        <button id="settings-toggle" type="button">TUNE</button>
+      </div>
+
+      <div id="prompt" class="hidden">
+        <div class="prompt-text">Tap / Click to throw</div>
+      </div>
+
+      <div id="gameover" class="overlay hidden" role="dialog" aria-modal="true">
+        <div class="overlay-card">
+          <div class="overlay-title">RUN COMPLETE</div>
+          <div id="final-score" class="overlay-score">0.000 m</div>
+          <div class="overlay-actions">
+            <button id="restart" type="button">Restart</button>
+            <button id="show-leaderboard" type="button">Score</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="leaderboard" class="overlay hidden" role="dialog" aria-modal="true">
+        <div class="overlay-card wide">
+          <div class="overlay-title">LEADERBOARD</div>
+          <div id="leaderboard-list"></div>
+          <div class="overlay-actions">
+            <button id="save-score" type="button">Save Score</button>
+            <button id="close-leaderboard" type="button">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="settings" class="panel hidden">
+        <div class="panel-title">PHYSICS TUNER</div>
+        <div class="panel-row">
+          <label>
+            Gravity
+            <input type="range" min="8" max="24" step="0.5" data-path="physics.gravity" />
+          </label>
+          <span class="panel-value" data-value="physics.gravity"></span>
+        </div>
+        <div class="panel-row">
+          <label>
+            Throw Speed
+            <input type="range" min="4" max="14" step="0.5" data-path="throwing.speed" />
+          </label>
+          <span class="panel-value" data-value="throwing.speed"></span>
+        </div>
+        <div class="panel-row">
+          <label>
+            Jump Window (m)
+            <input type="range" min="0.5" max="1.6" step="0.05" data-path="human.jumpThreshold" />
+          </label>
+          <span class="panel-value" data-value="human.jumpThreshold"></span>
+        </div>
+        <div class="panel-row">
+          <label>
+            Platform Count
+            <input type="range" min="6" max="20" step="1" data-path="platform.count" />
+          </label>
+          <span class="panel-value" data-value="platform.count"></span>
+        </div>
+        <div class="panel-row">
+          <label>
+            Peak Offset (m)
+            <input type="range" min="1" max="3" step="0.1" data-path="hero.peakOffset" />
+          </label>
+          <span class="panel-value" data-value="hero.peakOffset"></span>
+        </div>
+        <div class="panel-row">
+          <label>
+            Peak Randomness (m)
+            <input type="range" min="0" max="1" step="0.05" data-path="hero.peakRandomness" />
+          </label>
+          <span class="panel-value" data-value="hero.peakRandomness"></span>
+        </div>
+        <div class="panel-row">
+          <label class="panel-toggle">
+            Bonus Crawler
+            <input type="checkbox" data-path="features.bonusCrawler" />
+          </label>
+        </div>
+        <div class="panel-actions">
+          <button id="settings-reset" type="button">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="dist/main.js"></script>
+  </body>
+</html>

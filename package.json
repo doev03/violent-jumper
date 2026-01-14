@@ -1,0 +1,18 @@
+{
+  "name": "neon-ladder-telegram",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "serve": "python3 -m http.server 5173"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "version": "1.0.0",
+  "description": "Cyberpunk re-skin of the Yetisports 10 style vertical climb game. The hero robot auto-bounces on a trampoline; the player only throws platforms to help a human climb the wall.",
+  "main": "main.js",
+  "author": "",
+  "license": "ISC"
+}
