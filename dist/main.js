@@ -4,10 +4,10 @@ const STORAGE_KEYS = {
 };
 const DEFAULT_CONFIG = {
     physics: {
-        gravity: 14,
+        gravity: 10,
     },
     throwing: {
-        speed: 9.5,
+        speed: 10.0,
         cooldown: 0.2,
     },
     platform: {
@@ -21,7 +21,7 @@ const DEFAULT_CONFIG = {
         minPeak: 1.6,
     },
     human: {
-        jumpThreshold: 1.2,
+        jumpThreshold: 1.6,
         jumpDuration: 0.55,
         jumpArc: 0.35,
         worryDuration: 0.6,
@@ -40,9 +40,79 @@ const DEFAULT_CONFIG = {
         promptDuration: 2,
     },
 };
+// NOTE: Update columns/clip lengths to match the real sprite sheet grid.
+const HUMAN_ANIM = {
+    sheet: {
+        src: "assets/human-sheet-11.png",
+        columns: 7,
+        rows: 2,
+        width: 1,
+        height: 1.3,
+        anchorX: 0.5,
+        anchorY: 1.05,
+    },
+    idle: {
+        loopClips: [
+            { row: 0, start: 6, length: 1, fps: 1 },
+            { row: 0, start: 1, length: 1, fps: 1 },
+            { row: 0, start: 5, length: 1, fps: 1 },
+            { row: 0, start: 5, length: 2, fps: 1 },
+        ],
+        oneShotClips: [
+            { row: 0, start: 0, length: 1, fps: 1 },
+            { row: 0, start: 1, length: 3, fps: 3 },
+        ],
+        oneShotChance: 0.35,
+        minHold: 3.0,
+        maxHold: 5.0,
+        delayAfterLand: 0.4,
+    },
+    jump: {
+        prep: { row: 1, start: 1, length: 1, fps: 10 },
+        ascend: { row: 1, start: 2, length: 2, fps: 2 },
+        descend: { row: 1, start: 4, length: 1, fps: 1 },
+        land: { row: 1, start: 5, length: 1, fps: 1 },
+        landRatio: 0.88,
+    },
+};
+// NOTE: Update columns/clip lengths to match the hero sprite sheet grid.
+const HERO_ANIM = {
+    sheet: {
+        src: "assets/hero-sheet-3.png",
+        columns: 3,
+        rows: 5,
+        width: 1.5,
+        height: 1.5,
+        anchorX: 0.5,
+        anchorY: 1,
+    },
+    idleUp: { row: 0, start: 0, length: 3, fps: 6 },
+    idleDown: { row: 1, start: 0, length: 3, fps: 6 },
+    turn: { row: 2, start: 0, length: 1, fps: 1 },
+    bounce: { row: 3, start: 0, length: 3, fps: 10 },
+    throwCharge: { row: 4, start: 0, length: 1, fps: 1 },
+    throwRelease: { row: 4, start: 1, length: 1, fps: 1 },
+};
+// NOTE: Update columns/clip lengths to match the projectile sprite sheet grid.
+const PROJECTILE_ANIM = {
+    sheet: {
+        src: "assets/projectile-sheet-0.png",
+        columns: 5,
+        rows: 1,
+        width: 1.5,
+        height: 0.5,
+        anchorX: 0.1,
+        anchorY: 0.5,
+    },
+    flight: { row: 0, start: 0, length: 4, fps: 1 },
+};
+const PROJECTILE_ROTATION_OFFSET = Math.PI;
+const BACKGROUND_IMAGE_SRC = "assets/background-3-2.png";
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const lerp = (start, end, t) => start + (end - start) * t;
 const randRange = (min, max) => min + Math.random() * (max - min);
+const clipDuration = (clip) => clip.length / Math.max(1, clip.fps);
+const clipFrameIndex = (clip, frame, columns) => clip.row * columns + clip.start + frame;
 const pseudoRandom = (seed) => {
     const value = Math.sin(seed * 12.9898) * 43758.5453;
     return value - Math.floor(value);
@@ -92,6 +162,38 @@ const setConfigValue = (config, path, value) => {
             current = current[part];
         }
     });
+};
+const loadSpriteSheet = (spec) => {
+    const image = new Image();
+    const asset = {
+        ...spec,
+        image,
+        loaded: false,
+        frameWidth: 0,
+        frameHeight: 0,
+    };
+    image.onload = () => {
+        asset.loaded = true;
+        asset.frameWidth = image.width / spec.columns;
+        asset.frameHeight = image.height / spec.rows;
+    };
+    image.onerror = () => {
+        console.warn(`Failed to load sprite: ${spec.src}`);
+    };
+    image.src = spec.src;
+    return asset;
+};
+const loadImage = (src) => {
+    const image = new Image();
+    const asset = { image, loaded: false };
+    image.onload = () => {
+        asset.loaded = true;
+    };
+    image.onerror = () => {
+        console.warn(`Failed to load image: ${src}`);
+    };
+    image.src = src;
+    return asset;
 };
 class BonusCrawlerFeature {
     constructor() {
@@ -153,7 +255,10 @@ class BonusCrawlerFeature {
         const pulse = this.flashTime > 0 ? 1 + this.flashTime * 2 : 1;
         ctx.scale(pulse, pulse);
         ctx.beginPath();
-        ctx.fillStyle = this.flashTime > 0 ? "rgba(255, 179, 71, 0.9)" : "rgba(57, 245, 154, 0.9)";
+        ctx.fillStyle =
+            this.flashTime > 0
+                ? "rgba(255, 179, 71, 0.9)"
+                : "rgba(57, 245, 154, 0.9)";
         ctx.shadowColor = ctx.fillStyle;
         ctx.shadowBlur = 12;
         ctx.arc(0, 0, 8, 0, Math.PI * 2);
@@ -206,6 +311,21 @@ class Game {
         this.lastFrame = 0;
         this.settingsInputs = [];
         this.settingsValueLabels = [];
+        this.humanIdleClipIndex = 0;
+        this.humanIdleClipSource = "loop";
+        this.humanIdleClipStartedAt = 0;
+        this.humanIdleNextSwitch = 0;
+        this.humanIdleElapsed = 0;
+        this.heroThrowChargeElapsed = 0;
+        this.heroThrowCharging = false;
+        this.heroThrowReleaseElapsed = 0;
+        this.heroThrowReleaseActive = false;
+        this.heroBounceElapsed = 0;
+        this.heroBounceActive = false;
+        this.heroBounceTriggered = false;
+        this.heroTurnElapsed = 0;
+        this.heroTurnActive = false;
+        this.heroPrevVelY = 0;
         this.tick = (timestamp) => {
             if (!this.lastFrame) {
                 this.lastFrame = timestamp;
@@ -231,6 +351,8 @@ class Game {
         this.human = {
             y: 0,
             state: "idle",
+            jumpPhase: "prep",
+            jumpPhaseTime: 0,
             jumpStart: 0,
             jumpTarget: 0,
             jumpTime: 0,
@@ -246,6 +368,12 @@ class Game {
         this.settingsPanel = document.getElementById("settings");
         this.settingsInputs = Array.from(this.settingsPanel.querySelectorAll("[data-path]"));
         this.settingsValueLabels = Array.from(this.settingsPanel.querySelectorAll("[data-value]"));
+        this.sprites = {
+            human: loadSpriteSheet(HUMAN_ANIM.sheet),
+            hero: loadSpriteSheet(HERO_ANIM.sheet),
+            projectile: loadSpriteSheet(PROJECTILE_ANIM.sheet),
+        };
+        this.background = loadImage(BACKGROUND_IMAGE_SRC);
         this.bindUi();
         this.bindSettings();
         this.bindControls();
@@ -291,7 +419,9 @@ class Game {
                 return;
             }
             input.addEventListener("input", () => {
-                const nextValue = input.type === "checkbox" ? input.checked : clamp(Number(input.value), 0, 999);
+                const nextValue = input.type === "checkbox"
+                    ? input.checked
+                    : clamp(Number(input.value), 0, 999);
                 setConfigValue(this.config, path, nextValue);
                 if (path === "platform.count") {
                     if (typeof nextValue === "number") {
@@ -312,7 +442,8 @@ class Game {
                 return;
             }
             const value = getConfigValue(this.config, path);
-            label.textContent = typeof value === "number" ? value.toFixed(2) : value ? "on" : "off";
+            label.textContent =
+                typeof value === "number" ? value.toFixed(2) : value ? "on" : "off";
         });
     }
     syncSettingsInputs() {
@@ -334,16 +465,27 @@ class Game {
     bindControls() {
         window.addEventListener("pointerdown", (event) => {
             const target = event.target;
-            if (target.closest("button") || target.closest("input") || target.closest("#settings")) {
+            if (target.closest("button") ||
+                target.closest("input") ||
+                target.closest("#settings")) {
                 return;
             }
             if (this.mode === "playing") {
-                this.throwPlatform();
+                this.startHeroThrowCharge();
             }
         });
+        window.addEventListener("pointerup", () => {
+            this.releaseHeroThrow();
+        });
+        window.addEventListener("pointercancel", () => {
+            this.releaseHeroThrow();
+        });
         window.addEventListener("keydown", (event) => {
+            if (event.repeat) {
+                return;
+            }
             if (event.code === "Space" || event.code === "Enter") {
-                this.throwPlatform();
+                this.startHeroThrowCharge();
             }
             if (event.code === "KeyR") {
                 this.resetGame();
@@ -352,6 +494,39 @@ class Game {
                 this.toggleSettings();
             }
         });
+        window.addEventListener("keyup", (event) => {
+            if (event.code === "Space" || event.code === "Enter") {
+                this.releaseHeroThrow();
+            }
+        });
+    }
+    startHeroThrowCharge() {
+        if (this.mode !== "playing") {
+            return;
+        }
+        if (this.platformsLeft <= 0) {
+            return;
+        }
+        if (this.time - this.lastThrowAt < this.config.throwing.cooldown) {
+            return;
+        }
+        if (this.heroThrowCharging) {
+            return;
+        }
+        this.heroThrowCharging = true;
+        this.heroThrowChargeElapsed = 0;
+        this.heroTurnActive = false;
+        this.heroTurnElapsed = 0;
+    }
+    releaseHeroThrow() {
+        if (!this.heroThrowCharging) {
+            return;
+        }
+        this.heroThrowCharging = false;
+        if (this.throwPlatform()) {
+            this.heroThrowReleaseElapsed = 0;
+            this.heroThrowReleaseActive = true;
+        }
     }
     toggleSettings() {
         this.settingsPanel.classList.toggle("hidden");
@@ -374,12 +549,29 @@ class Game {
         this.hero.pos = { x: 3.1, y: this.heroGroundY };
         this.hero.vel = { x: 0, y: 0 };
         this.hero.squish = 0;
+        this.heroThrowChargeElapsed = 0;
+        this.heroThrowCharging = false;
+        this.heroThrowReleaseElapsed = 0;
+        this.heroThrowReleaseActive = false;
+        this.heroBounceElapsed = 0;
+        this.heroBounceActive = false;
+        this.heroBounceTriggered = false;
+        this.heroTurnElapsed = 0;
+        this.heroTurnActive = false;
+        this.heroPrevVelY = 0;
         this.human.y = 0;
         this.human.state = "idle";
+        this.human.jumpPhase = "prep";
+        this.human.jumpPhaseTime = 0;
         this.human.jumpStart = this.human.y;
         this.human.jumpTarget = this.human.y;
         this.human.jumpTime = 0;
         this.human.worryTime = 0;
+        this.humanIdleClipIndex = 0;
+        this.humanIdleClipSource = "loop";
+        this.humanIdleClipStartedAt = this.time;
+        this.humanIdleNextSwitch = this.time;
+        this.humanIdleElapsed = 0;
         this.score = 0;
         this.maxAltitude = 0;
         this.cameraY = 0;
@@ -411,23 +603,28 @@ class Game {
     throwPlatform() {
         const now = this.time;
         if (this.mode !== "playing") {
-            return;
+            return false;
         }
         if (this.platformsLeft <= 0) {
-            return;
+            return false;
         }
         if (now - this.lastThrowAt < this.config.throwing.cooldown) {
-            return;
+            return false;
         }
+        const startX = this.hero.pos.x - 0.2;
+        const gravity = this.config.physics.gravity * 0.85;
+        const arcHeight = randRange(0.35, 0.75);
+        const arcVy = Math.sqrt(2 * gravity * arcHeight);
         const projectile = {
             id: Date.now() + Math.random(),
-            pos: { x: this.hero.pos.x - 0.2, y: this.hero.pos.y + 0.6 },
+            pos: { x: startX, y: this.hero.pos.y + 0.6 },
             vel: {
                 x: -this.config.throwing.speed,
-                y: randRange(0.5, 1.4),
+                y: arcVy,
             },
-            rotation: randRange(0, Math.PI * 2),
-            spin: randRange(-4, 4),
+            rotation: Math.atan2(arcVy, -this.config.throwing.speed) + PROJECTILE_ROTATION_OFFSET,
+            startX,
+            age: 0,
             active: true,
         };
         this.projectiles.push(projectile);
@@ -435,6 +632,7 @@ class Game {
         this.lastThrowAt = now;
         this.promptTimer = 0;
         this.refreshPlatformIcons();
+        return true;
     }
     addPlatforms(amount) {
         this.platformsLeft += amount;
@@ -447,6 +645,7 @@ class Game {
         this.time += dt;
         this.promptTimer = Math.max(0, this.promptTimer - dt);
         this.updateHero(dt);
+        this.updateHeroAnimation(dt);
         this.updateProjectiles(dt);
         this.updateHuman(dt);
         this.updateCamera(dt);
@@ -456,23 +655,78 @@ class Game {
         }
         this.score = Math.max(this.score, this.human.y);
         this.updateScoreUi();
-        if (this.platformsLeft <= 0 && this.projectiles.length === 0 && this.human.state === "idle") {
+        if (this.platformsLeft <= 0 &&
+            this.projectiles.length === 0 &&
+            this.human.state === "idle") {
             this.endGame();
         }
     }
     updateHero(dt) {
+        const prevVelY = this.hero.vel.y;
+        this.heroPrevVelY = prevVelY;
         this.hero.vel.y -= this.config.physics.gravity * dt;
         this.hero.pos.y += this.hero.vel.y * dt;
+        if (prevVelY > 0 && this.hero.vel.y <= 0) {
+            if (!this.heroThrowCharging && !this.heroThrowReleaseActive) {
+                this.heroTurnActive = true;
+                this.heroTurnElapsed = 0;
+            }
+        }
+        const bounceLead = 0.25;
+        const nearGround = this.hero.pos.y <= this.heroGroundY + bounceLead;
+        if (this.hero.vel.y < 0 && nearGround && !this.heroBounceTriggered) {
+            this.heroBounceTriggered = true;
+            this.heroBounceActive = true;
+            this.heroBounceElapsed = 0;
+            this.heroThrowCharging = false;
+        }
         if (this.hero.pos.y <= this.heroGroundY) {
             this.hero.pos.y = this.heroGroundY;
             this.hero.squish = 1;
+            this.heroBounceTriggered = true;
+            if (!this.heroBounceActive) {
+                this.heroBounceActive = true;
+                this.heroBounceElapsed = 0;
+            }
+            this.heroThrowCharging = false;
             const peakBase = this.human.y + this.config.hero.peakOffset;
-            const desiredApex = Math.max(this.config.hero.minPeak, peakBase + randRange(-this.config.hero.peakRandomness, this.config.hero.peakRandomness));
+            const desiredApex = Math.max(this.config.hero.minPeak, peakBase +
+                randRange(-this.config.hero.peakRandomness, this.config.hero.peakRandomness));
             const heightFromGround = Math.max(0.1, desiredApex - this.heroGroundY);
             const desiredVy = Math.sqrt(2 * this.config.physics.gravity * heightFromGround);
             this.hero.vel.y = desiredVy;
         }
+        if (this.hero.vel.y > 0 &&
+            this.hero.pos.y > this.heroGroundY + bounceLead) {
+            this.heroBounceTriggered = false;
+        }
         this.hero.squish = Math.max(0, this.hero.squish - dt * 2.8);
+    }
+    updateHeroAnimation(dt) {
+        if (this.heroThrowCharging) {
+            const duration = clipDuration(HERO_ANIM.throwCharge);
+            this.heroThrowChargeElapsed = Math.min(duration, this.heroThrowChargeElapsed + dt);
+            this.heroTurnActive = false;
+            this.heroTurnElapsed = 0;
+        }
+        if (this.heroThrowReleaseActive) {
+            this.heroThrowReleaseElapsed += dt;
+            if (this.heroThrowReleaseElapsed >= clipDuration(HERO_ANIM.throwRelease)) {
+                this.heroThrowReleaseActive = false;
+            }
+        }
+        if (this.heroBounceActive) {
+            this.heroBounceElapsed += dt;
+            if (this.heroBounceElapsed >= clipDuration(HERO_ANIM.bounce)) {
+                this.heroBounceActive = false;
+            }
+        }
+        if (this.heroTurnActive) {
+            this.heroTurnElapsed += dt;
+            if (this.heroTurnElapsed >= clipDuration(HERO_ANIM.turn)) {
+                this.heroTurnActive = false;
+            }
+        }
     }
     updateProjectiles(dt) {
         const gravity = this.config.physics.gravity * 0.85;
@@ -481,10 +735,12 @@ class Game {
             if (!projectile.active) {
                 continue;
             }
+            projectile.age += dt;
             projectile.vel.y -= gravity * dt;
             projectile.pos.x += projectile.vel.x * dt;
             projectile.pos.y += projectile.vel.y * dt;
-            projectile.rotation += projectile.spin * dt;
+            projectile.rotation =
+                Math.atan2(projectile.vel.y, projectile.vel.x) + PROJECTILE_ROTATION_OFFSET;
             for (const feature of this.features) {
                 if (feature.onProjectile?.(projectile, this)) {
                     projectile.active = false;
@@ -496,37 +752,53 @@ class Game {
             }
             if (projectile.pos.x <= wallX) {
                 const platformY = Math.max(0, projectile.pos.y);
+                const stuckFrame = clipFrameIndex(PROJECTILE_ANIM.flight, Math.max(0, PROJECTILE_ANIM.flight.length - 1), PROJECTILE_ANIM.sheet.columns);
                 this.platforms.push({
                     id: Date.now() + Math.random(),
                     y: platformY,
                     createdAt: this.time,
+                    spriteFrame: stuckFrame,
+                    rotation: projectile.rotation,
                 });
                 projectile.active = false;
                 this.handlePlatformPlacement(platformY);
             }
-            if (projectile.pos.y < -2 || projectile.pos.y > this.cameraY + this.viewHeightMeters + 6) {
+            if (projectile.pos.y < -2 ||
+                projectile.pos.y > this.cameraY + this.viewHeightMeters + 6) {
                 projectile.active = false;
             }
         }
         this.projectiles = this.projectiles.filter((projectile) => projectile.active);
     }
     handlePlatformPlacement(platformY) {
+        if (this.human.state === "jumping") {
+            return;
+        }
         if (this.attemptHumanJump()) {
             return;
         }
         this.human.state = "worry";
         this.human.worryTime = this.config.human.worryDuration;
+        this.pickIdleClip("oneShot");
     }
     updateHuman(dt) {
         if (this.human.state === "jumping") {
-            this.human.jumpTime += dt;
-            const t = clamp(this.human.jumpTime / this.config.human.jumpDuration, 0, 1);
-            const eased = easeInOut(t);
-            const arc = Math.sin(t * Math.PI) * this.config.human.jumpArc;
-            this.human.y = lerp(this.human.jumpStart, this.human.jumpTarget, eased) + arc;
-            if (t >= 1) {
-                this.human.state = "idle";
-                this.human.y = this.human.jumpTarget;
+            if (this.human.jumpPhase === "prep") {
+                const prepDuration = clipDuration(HUMAN_ANIM.jump.prep);
+                this.human.jumpPhaseTime += dt;
+                this.human.y = this.human.jumpStart;
+                if (this.human.jumpPhaseTime >= prepDuration) {
+                    const overflow = this.human.jumpPhaseTime - prepDuration;
+                    this.human.jumpPhase = "ascend";
+                    this.human.jumpPhaseTime = 0;
+                    this.human.jumpTime = 0;
+                    if (overflow > 0) {
+                        this.advanceHumanJump(overflow);
+                    }
+                }
+            }
+            else {
+                this.advanceHumanJump(dt);
             }
         }
         if (this.human.state === "worry") {
@@ -537,6 +809,42 @@ class Game {
         }
         if (this.human.state === "idle") {
             this.attemptHumanJump();
+        }
+        this.updateHumanIdleAnimation(dt);
+    }
+    advanceHumanJump(dt) {
+        this.human.jumpTime += dt;
+        const t = clamp(this.human.jumpTime / this.config.human.jumpDuration, 0, 1);
+        const eased = easeInOut(t);
+        const arc = Math.sin(t * Math.PI) * this.config.human.jumpArc;
+        this.human.y =
+            lerp(this.human.jumpStart, this.human.jumpTarget, eased) + arc;
+        const landRatio = clamp(HUMAN_ANIM.jump.landRatio, 0, 1);
+        let nextPhase;
+        if (t >= landRatio) {
+            nextPhase = "land";
+        }
+        else if (t >= 0.5) {
+            nextPhase = "descend";
+        }
+        else {
+            nextPhase = "ascend";
+        }
+        if (nextPhase !== this.human.jumpPhase) {
+            this.human.jumpPhase = nextPhase;
+            this.human.jumpPhaseTime = 0;
+        }
+        else {
+            this.human.jumpPhaseTime += dt;
+        }
+        if (t >= 1) {
+            this.human.state = "idle";
+            this.human.jumpPhase = "land";
+            this.human.jumpPhaseTime = 0;
+            this.human.y = this.human.jumpTarget;
+            this.humanIdleElapsed = 0;
+            this.humanIdleClipStartedAt = this.time;
+            this.humanIdleNextSwitch = this.time;
         }
     }
     updateCamera(dt) {
@@ -567,11 +875,56 @@ class Game {
             return false;
         }
         this.human.state = "jumping";
+        this.human.jumpPhase = "prep";
+        this.human.jumpPhaseTime = 0;
         this.human.jumpStart = this.human.y;
         this.human.jumpTarget = target.y;
         this.human.jumpTime = 0;
         this.human.worryTime = 0;
+        this.humanIdleElapsed = 0;
         return true;
+    }
+    updateHumanIdleAnimation(dt) {
+        if (this.human.state === "jumping") {
+            this.humanIdleElapsed = 0;
+            return;
+        }
+        this.humanIdleElapsed += dt;
+        if (this.humanIdleElapsed < HUMAN_ANIM.idle.delayAfterLand) {
+            return;
+        }
+        if (this.time >= this.humanIdleNextSwitch) {
+            this.pickIdleClip();
+        }
+    }
+    pickIdleClip(force) {
+        const idle = HUMAN_ANIM.idle;
+        const wantsOneShot = force
+            ? force === "oneShot"
+            : Math.random() < idle.oneShotChance;
+        let clips = wantsOneShot ? idle.oneShotClips : idle.loopClips;
+        let source = wantsOneShot ? "oneShot" : "loop";
+        if (clips.length === 0) {
+            clips = wantsOneShot ? idle.loopClips : idle.oneShotClips;
+            source = source === "oneShot" ? "loop" : "oneShot";
+        }
+        if (clips.length === 0) {
+            return;
+        }
+        let nextIndex = Math.floor(Math.random() * clips.length);
+        if (clips.length > 1 &&
+            source === this.humanIdleClipSource &&
+            nextIndex === this.humanIdleClipIndex) {
+            nextIndex = (nextIndex + 1) % clips.length;
+        }
+        const clip = clips[nextIndex];
+        this.humanIdleClipIndex = nextIndex;
+        this.humanIdleClipSource = source;
+        this.humanIdleClipStartedAt = this.time;
+        this.humanIdleNextSwitch =
+            source === "loop"
+                ? this.time + randRange(idle.minHold, idle.maxHold)
+                : this.time + clipDuration(clip);
     }
     updateScoreUi() {
         this.scoreValue.textContent = formatScore(this.score);
@@ -607,7 +960,8 @@ class Game {
     renderLeaderboard() {
         const entries = this.loadScores();
         if (entries.length === 0) {
-            this.leaderboardList.innerHTML = "<div class=\"leaderboard-row\">No scores yet</div>";
+            this.leaderboardList.innerHTML =
+                '<div class="leaderboard-row">No scores yet</div>';
             return;
         }
         this.leaderboardList.innerHTML = entries
@@ -633,7 +987,9 @@ class Game {
         const webApp = window.Telegram?.WebApp;
         const user = webApp?.initDataUnsafe?.user;
         if (user) {
-            return (user.username || [user.first_name, user.last_name].filter(Boolean).join(" ") || "Runner");
+            return (user.username ||
+                [user.first_name, user.last_name].filter(Boolean).join(" ") ||
+                "Runner");
         }
         const input = window.prompt("Enter name for leaderboard", "Runner");
         if (!input) {
@@ -672,41 +1028,18 @@ class Game {
         }
     }
     drawBackground() {
-        const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
-        gradient.addColorStop(0, "#0c1528");
-        gradient.addColorStop(0.4, "#09101f");
-        gradient.addColorStop(1, "#05070d");
-        this.ctx.fillStyle = gradient;
-        this.ctx.fillRect(0, 0, this.width, this.height);
-        const haze = this.ctx.createRadialGradient(this.width * 0.2, this.height * 0.2, 40, this.width * 0.2, this.height * 0.2, this.width * 0.6);
-        haze.addColorStop(0, "rgba(50, 242, 255, 0.2)");
-        haze.addColorStop(1, "rgba(5, 10, 18, 0)");
-        this.ctx.fillStyle = haze;
-        this.ctx.fillRect(0, 0, this.width, this.height);
-        const skylineCount = 12;
-        const spacing = this.width / skylineCount;
-        const span = this.width + spacing;
-        const scroll = this.time * 18;
-        const columns = skylineCount + 2;
-        for (let i = 0; i < columns; i += 1) {
-            const worldX = i * spacing + scroll;
-            const x = (worldX % span) - spacing;
-            const wrapCount = Math.floor(worldX / span);
-            const seed = i + wrapCount * columns;
-            const buildingHeight = 40 + pseudoRandom(seed) * 80;
-            this.ctx.fillStyle = "rgba(11, 20, 35, 0.85)";
-            this.ctx.fillRect(x - 20, this.height - buildingHeight - 60, 40, buildingHeight);
-            this.ctx.fillStyle = "rgba(50, 242, 255, 0.25)";
-            this.ctx.fillRect(x - 16, this.height - buildingHeight - 50, 32, 3);
+        if (this.background.loaded) {
+            const image = this.background.image;
+            const scale = Math.max(this.width / image.width, this.height / image.height);
+            const drawWidth = image.width * scale;
+            const drawHeight = image.height * scale;
+            const offsetX = (this.width - drawWidth) / 2;
+            const offsetY = (this.height - drawHeight) / 2;
+            this.ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
         }
-        this.ctx.strokeStyle = "rgba(50, 242, 255, 0.12)";
-        this.ctx.lineWidth = 1;
-        const gridStart = this.height * 0.55;
-        for (let y = gridStart; y < this.height; y += 30) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, y);
-            this.ctx.lineTo(this.width, y + 20);
-            this.ctx.stroke();
+        else {
+            this.ctx.fillStyle = "#070a12";
+            this.ctx.fillRect(0, 0, this.width, this.height);
         }
     }
     drawWall() {
@@ -727,7 +1060,9 @@ class Game {
                 continue;
             }
             const major = meter % 5 === 0;
-            this.ctx.strokeStyle = major ? "rgba(50, 242, 255, 0.8)" : "rgba(50, 242, 255, 0.4)";
+            this.ctx.strokeStyle = major
+                ? "rgba(50, 242, 255, 0.8)"
+                : "rgba(50, 242, 255, 0.4)";
             this.ctx.lineWidth = major ? 3 : 1;
             this.ctx.beginPath();
             this.ctx.moveTo(this.wallScreenX - (major ? 14 : 10), y);
@@ -755,25 +1090,52 @@ class Game {
         this.ctx.strokeStyle = "rgba(5, 8, 14, 0.7)";
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(baseX, baseY - baseHeight / 2, baseWidth, baseHeight);
+        const sprite = this.sprites.projectile;
         for (const platform of this.platforms) {
             const x = this.wallScreenX + 12;
             const y = this.worldToScreenY(platform.y);
-            const width = this.config.platform.width * this.meterPx;
-            const height = this.config.platform.height * this.meterPx;
             const growTime = 0.22;
             const growProgress = clamp((this.time - platform.createdAt) / growTime, 0, 1);
             const grow = easeInOut(growProgress);
-            const growWidth = width * grow;
-            const growHeight = height * grow;
-            const glow = Math.min(1, (this.time - platform.createdAt) * 3);
-            this.ctx.fillStyle = `rgba(57, 245, 154, ${0.6 + glow * 0.2})`;
-            this.ctx.shadowColor = "rgba(57, 245, 154, 0.6)";
-            this.ctx.shadowBlur = 12;
-            this.ctx.fillRect(x, y - growHeight / 2, growWidth, growHeight);
-            this.ctx.shadowBlur = 0;
-            this.ctx.strokeStyle = "rgba(5, 8, 14, 0.6)";
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(x, y - growHeight / 2, growWidth, growHeight);
+            if (sprite.loaded &&
+                sprite.frameWidth > 0 &&
+                sprite.frameHeight > 0 &&
+                platform.spriteFrame !== undefined) {
+                const maxFrames = sprite.columns * sprite.rows;
+                const safeFrame = clamp(platform.spriteFrame, 0, Math.max(0, maxFrames - 1));
+                const column = safeFrame % sprite.columns;
+                const row = Math.floor(safeFrame / sprite.columns);
+                const sx = column * sprite.frameWidth;
+                const sy = row * sprite.frameHeight;
+                const width = sprite.width * this.meterPx;
+                const height = sprite.height * this.meterPx;
+                const glow = Math.min(1, (this.time - platform.createdAt) * 3);
+                this.ctx.save();
+                this.ctx.translate(x, y);
+                if (platform.rotation) {
+                    this.ctx.rotate(platform.rotation);
+                }
+                this.ctx.scale(grow, grow);
+                this.ctx.shadowColor = `rgba(57, 245, 154, ${0.35 + glow * 0.25})`;
+                this.ctx.shadowBlur = 12;
+                this.ctx.drawImage(sprite.image, sx, sy, sprite.frameWidth, sprite.frameHeight, -width * sprite.anchorX, -height * sprite.anchorY, width, height);
+                this.ctx.restore();
+            }
+            else {
+                const width = this.config.platform.width * this.meterPx;
+                const height = this.config.platform.height * this.meterPx;
+                const growWidth = width * grow;
+                const growHeight = height * grow;
+                const glow = Math.min(1, (this.time - platform.createdAt) * 3);
+                this.ctx.fillStyle = `rgba(57, 245, 154, ${0.6 + glow * 0.2})`;
+                this.ctx.shadowColor = "rgba(57, 245, 154, 0.6)";
+                this.ctx.shadowBlur = 12;
+                this.ctx.fillRect(x, y - growHeight / 2, growWidth, growHeight);
+                this.ctx.shadowBlur = 0;
+                this.ctx.strokeStyle = "rgba(5, 8, 14, 0.6)";
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(x, y - growHeight / 2, growWidth, growHeight);
+            }
         }
         this.ctx.restore();
     }
@@ -798,80 +1160,200 @@ class Game {
         const y = this.worldToScreenY(this.hero.pos.y);
         const bodyWidth = this.meterPx * 0.5;
         const bodyHeight = this.meterPx * 0.8;
+        const sprite = this.sprites.hero;
         this.ctx.save();
         this.ctx.translate(x, y);
         const bob = Math.sin(this.time * 4) * 3;
-        this.ctx.translate(0, bob - bodyHeight * 0.6);
-        ///
-        this.ctx.fillStyle = "rgba(57, 245, 154, 0.8)";
-        this.ctx.fillRect(-bodyWidth / 2, -bodyHeight * 0.1, bodyWidth, bodyHeight * 0.2);
-        this.ctx.fillStyle = "rgba(50, 242, 255, 0.85)";
-        this.ctx.shadowColor = "rgba(50, 242, 255, 0.6)";
-        this.ctx.shadowBlur = 12;
-        this.ctx.fillRect(-bodyWidth / 2, bodyHeight * 0.15, bodyWidth, bodyHeight * 0.65);
-        this.ctx.shadowBlur = 0;
-        this.ctx.fillStyle = "rgba(5, 8, 14, 0.8)";
-        this.ctx.fillRect(-bodyWidth * 0.3, bodyHeight * 0.25, bodyWidth * 0.6, bodyHeight * 0.3);
-        this.ctx.fillStyle = "rgba(255, 179, 71, 0.9)";
-        this.ctx.fillRect(-bodyWidth * 0.2, bodyHeight * 0.3, bodyWidth * 0.4, bodyHeight * 0.08);
-        ///
-        // this.ctx.fillStyle = "rgba(50, 242, 255, 0.85)";
-        // this.ctx.shadowColor = "rgba(50, 242, 255, 0.6)";
-        // this.ctx.shadowBlur = 12;
-        // this.ctx.fillRect(-bodyWidth / 2, -bodyHeight / 2, bodyWidth, bodyHeight * 0.65);
-        // this.ctx.shadowBlur = 0;
-        // this.ctx.fillStyle = "rgba(5, 8, 14, 0.8)";
-        // this.ctx.fillRect(-bodyWidth * 0.3, -bodyHeight * 0.2, bodyWidth * 0.6, bodyHeight * 0.3);
-        // this.ctx.fillStyle = "rgba(255, 179, 71, 0.9)";
-        // this.ctx.fillRect(-bodyWidth * 0.2, -bodyHeight * 0.15, bodyWidth * 0.4, bodyHeight * 0.08);
-        // this.ctx.fillStyle = "rgba(57, 245, 154, 0.8)";
-        // this.ctx.fillRect(-bodyWidth / 2, bodyHeight * 0.2, bodyWidth, bodyHeight * 0.2);
-        ///
+        this.ctx.translate(0, bob);
+        if (sprite.loaded && sprite.frameWidth > 0 && sprite.frameHeight > 0) {
+            const width = sprite.width * this.meterPx;
+            const height = sprite.height * this.meterPx;
+            const frameIndex = this.getHeroFrameIndex(sprite);
+            const maxFrames = sprite.columns * sprite.rows;
+            const safeFrame = clamp(frameIndex, 0, Math.max(0, maxFrames - 1));
+            const column = safeFrame % sprite.columns;
+            const row = Math.floor(safeFrame / sprite.columns);
+            const sx = column * sprite.frameWidth;
+            const sy = row * sprite.frameHeight;
+            this.ctx.drawImage(sprite.image, sx, sy, sprite.frameWidth, sprite.frameHeight, -width * sprite.anchorX, -height * sprite.anchorY, width, height);
+        }
+        else {
+            this.ctx.translate(0, -bodyHeight * 0.6);
+            ///
+            this.ctx.fillStyle = "rgba(57, 245, 154, 0.8)";
+            this.ctx.fillRect(-bodyWidth / 2, -bodyHeight * 0.1, bodyWidth, bodyHeight * 0.2);
+            this.ctx.fillStyle = "rgba(50, 242, 255, 0.85)";
+            this.ctx.shadowColor = "rgba(50, 242, 255, 0.6)";
+            this.ctx.shadowBlur = 12;
+            this.ctx.fillRect(-bodyWidth / 2, bodyHeight * 0.15, bodyWidth, bodyHeight * 0.65);
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillStyle = "rgba(5, 8, 14, 0.8)";
+            this.ctx.fillRect(-bodyWidth * 0.3, bodyHeight * 0.25, bodyWidth * 0.6, bodyHeight * 0.3);
+            this.ctx.fillStyle = "rgba(255, 179, 71, 0.9)";
+            this.ctx.fillRect(-bodyWidth * 0.2, bodyHeight * 0.3, bodyWidth * 0.4, bodyHeight * 0.08);
+            ///
+            // this.ctx.fillStyle = "rgba(50, 242, 255, 0.85)";
+            // this.ctx.shadowColor = "rgba(50, 242, 255, 0.6)";
+            // this.ctx.shadowBlur = 12;
+            // this.ctx.fillRect(-bodyWidth / 2, -bodyHeight / 2, bodyWidth, bodyHeight * 0.65);
+            // this.ctx.shadowBlur = 0;
+            // this.ctx.fillStyle = "rgba(5, 8, 14, 0.8)";
+            // this.ctx.fillRect(-bodyWidth * 0.3, -bodyHeight * 0.2, bodyWidth * 0.6, bodyHeight * 0.3);
+            // this.ctx.fillStyle = "rgba(255, 179, 71, 0.9)";
+            // this.ctx.fillRect(-bodyWidth * 0.2, -bodyHeight * 0.15, bodyWidth * 0.4, bodyHeight * 0.08);
+            // this.ctx.fillStyle = "rgba(57, 245, 154, 0.8)";
+            // this.ctx.fillRect(-bodyWidth / 2, bodyHeight * 0.2, bodyWidth, bodyHeight * 0.2);
+            ///
+        }
         this.ctx.restore();
     }
     drawHuman() {
         const x = this.worldToScreenX(0.55);
         const y = this.worldToScreenY(this.human.y);
-        const wobble = this.human.state === "worry" ? Math.sin(this.time * 12) * 3 : Math.sin(this.time * 2) * 1.5;
-        const bodyWidth = this.meterPx * 0.16;
-        const bodyHeight = this.meterPx * 0.32;
-        const headSize = this.meterPx * 0.18;
-        this.ctx.save();
-        this.ctx.translate(x + wobble, y - this.meterPx * 0.2);
-        this.ctx.fillStyle = "rgba(255, 111, 110, 0.9)";
-        this.ctx.shadowColor = "rgba(255, 111, 110, 0.6)";
-        this.ctx.shadowBlur = 10;
-        this.ctx.fillRect(-bodyWidth / 2, -bodyHeight, bodyWidth, bodyHeight);
-        this.ctx.shadowBlur = 0;
-        this.ctx.fillStyle = "rgba(230, 244, 255, 0.9)";
-        this.ctx.fillRect(-headSize / 2, -bodyHeight - headSize, headSize, headSize);
-        this.ctx.strokeStyle = "rgba(230, 244, 255, 0.5)";
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.moveTo(-bodyWidth * 0.8, -bodyHeight * 0.4);
-        this.ctx.lineTo(-bodyWidth * 1.2, bodyHeight * 0.2);
-        this.ctx.moveTo(bodyWidth * 0.8, -bodyHeight * 0.4);
-        this.ctx.lineTo(bodyWidth * 1.2, bodyHeight * 0.2);
-        this.ctx.stroke();
-        this.ctx.restore();
+        const wobble = this.human.state === "worry"
+            ? Math.sin(this.time * 12) * 3
+            : Math.sin(this.time * 2) * 1.5;
+        const sprite = this.sprites.human;
+        if (sprite.loaded && sprite.frameWidth > 0 && sprite.frameHeight > 0) {
+            const width = sprite.width * this.meterPx;
+            const height = sprite.height * this.meterPx;
+            const frameIndex = this.getHumanFrameIndex(sprite);
+            const maxFrames = sprite.columns * sprite.rows;
+            const safeFrame = clamp(frameIndex, 0, Math.max(0, maxFrames - 1));
+            const column = safeFrame % sprite.columns;
+            const row = Math.floor(safeFrame / sprite.columns);
+            const sx = column * sprite.frameWidth;
+            const sy = row * sprite.frameHeight;
+            this.ctx.save();
+            this.ctx.translate(x + wobble, y);
+            this.ctx.drawImage(sprite.image, sx, sy, sprite.frameWidth, sprite.frameHeight, -width * sprite.anchorX, -height * sprite.anchorY, width, height);
+            this.ctx.restore();
+        }
+        else {
+            const bodyWidth = this.meterPx * 0.16;
+            const bodyHeight = this.meterPx * 0.32;
+            const headSize = this.meterPx * 0.18;
+            this.ctx.save();
+            this.ctx.translate(x + wobble, y - this.meterPx * 0.2);
+            this.ctx.fillStyle = "rgba(255, 111, 110, 0.9)";
+            this.ctx.shadowColor = "rgba(255, 111, 110, 0.6)";
+            this.ctx.shadowBlur = 10;
+            this.ctx.fillRect(-bodyWidth / 2, -bodyHeight, bodyWidth, bodyHeight);
+            this.ctx.shadowBlur = 0;
+            this.ctx.fillStyle = "rgba(230, 244, 255, 0.9)";
+            this.ctx.fillRect(-headSize / 2, -bodyHeight - headSize, headSize, headSize);
+            this.ctx.strokeStyle = "rgba(230, 244, 255, 0.5)";
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(-bodyWidth * 0.8, -bodyHeight * 0.4);
+            this.ctx.lineTo(-bodyWidth * 1.2, bodyHeight * 0.2);
+            this.ctx.moveTo(bodyWidth * 0.8, -bodyHeight * 0.4);
+            this.ctx.lineTo(bodyWidth * 1.2, bodyHeight * 0.2);
+            this.ctx.stroke();
+            this.ctx.restore();
+        }
+    }
+    getHeroFrameIndex(sprite) {
+        if (this.heroBounceActive) {
+            const frame = Math.min(HERO_ANIM.bounce.length - 1, Math.floor(this.heroBounceElapsed * HERO_ANIM.bounce.fps));
+            return clipFrameIndex(HERO_ANIM.bounce, frame, sprite.columns);
+        }
+        if (this.heroThrowReleaseActive) {
+            const frame = Math.min(HERO_ANIM.throwRelease.length - 1, Math.floor(this.heroThrowReleaseElapsed * HERO_ANIM.throwRelease.fps));
+            return clipFrameIndex(HERO_ANIM.throwRelease, frame, sprite.columns);
+        }
+        if (this.heroThrowCharging) {
+            const frame = Math.min(HERO_ANIM.throwCharge.length - 1, Math.floor(this.heroThrowChargeElapsed * HERO_ANIM.throwCharge.fps));
+            return clipFrameIndex(HERO_ANIM.throwCharge, frame, sprite.columns);
+        }
+        if (this.heroTurnActive) {
+            const frame = Math.min(HERO_ANIM.turn.length - 1, Math.floor(this.heroTurnElapsed * HERO_ANIM.turn.fps));
+            return clipFrameIndex(HERO_ANIM.turn, frame, sprite.columns);
+        }
+        const idleClip = this.hero.vel.y >= 0 ? HERO_ANIM.idleUp : HERO_ANIM.idleDown;
+        const idleFrame = idleClip.length > 1
+            ? Math.floor((this.time * idleClip.fps) % idleClip.length)
+            : 0;
+        return clipFrameIndex(idleClip, idleFrame, sprite.columns);
+    }
+    getHumanFrameIndex(sprite) {
+        if (this.human.state === "jumping") {
+            let clip = HUMAN_ANIM.jump.prep;
+            if (this.human.jumpPhase === "ascend") {
+                clip = HUMAN_ANIM.jump.ascend;
+            }
+            else if (this.human.jumpPhase === "descend") {
+                clip = HUMAN_ANIM.jump.descend;
+            }
+            else if (this.human.jumpPhase === "land") {
+                clip = HUMAN_ANIM.jump.land;
+            }
+            const fps = Math.max(1, clip.fps);
+            const frame = clip.length > 1
+                ? Math.min(clip.length - 1, Math.floor(this.human.jumpPhaseTime * fps))
+                : 0;
+            return clipFrameIndex(clip, frame, sprite.columns);
+        }
+        const idle = HUMAN_ANIM.idle;
+        const idleClips = this.humanIdleClipSource === "oneShot"
+            ? idle.oneShotClips
+            : idle.loopClips;
+        let clip = idleClips[this.humanIdleClipIndex];
+        if (!clip) {
+            clip = idle.loopClips[0] ?? idle.oneShotClips[0];
+        }
+        if (!clip) {
+            return 0;
+        }
+        const clipTime = Math.max(0, this.time - this.humanIdleClipStartedAt);
+        const fps = Math.max(1, clip.fps);
+        const isOneShot = this.humanIdleClipSource === "oneShot" || idle.loopClips.length === 0;
+        const frame = clip.length > 1
+            ? isOneShot
+                ? Math.min(clip.length - 1, Math.floor(clipTime * fps))
+                : Math.floor((clipTime * fps) % clip.length)
+            : 0;
+        return clipFrameIndex(clip, frame, sprite.columns);
     }
     drawProjectiles() {
         for (const projectile of this.projectiles) {
             const x = this.worldToScreenX(projectile.pos.x);
             const y = this.worldToScreenY(projectile.pos.y);
-            this.ctx.save();
-            this.ctx.translate(x, y);
-            this.ctx.rotate(projectile.rotation);
-            this.ctx.fillStyle = "rgba(50, 242, 255, 0.8)";
-            this.ctx.shadowColor = "rgba(50, 242, 255, 0.6)";
-            this.ctx.shadowBlur = 10;
-            this.ctx.beginPath();
-            this.ctx.moveTo(0, -8);
-            this.ctx.lineTo(18, 0);
-            this.ctx.lineTo(0, 8);
-            this.ctx.closePath();
-            this.ctx.fill();
-            this.ctx.restore();
+            const sprite = this.sprites.projectile;
+            if (sprite.loaded && sprite.frameWidth > 0 && sprite.frameHeight > 0) {
+                const span = Math.max(0.001, projectile.startX);
+                const progress = clamp((projectile.startX - projectile.pos.x) / span, 0, 1);
+                const frame = Math.min(PROJECTILE_ANIM.flight.length - 1, Math.floor(progress * PROJECTILE_ANIM.flight.length));
+                const frameIndex = clipFrameIndex(PROJECTILE_ANIM.flight, frame, sprite.columns);
+                const column = frameIndex % sprite.columns;
+                const row = Math.floor(frameIndex / sprite.columns);
+                const sx = column * sprite.frameWidth;
+                const sy = row * sprite.frameHeight;
+                const width = sprite.width * this.meterPx;
+                const height = sprite.height * this.meterPx;
+                this.ctx.save();
+                this.ctx.translate(x, y);
+                this.ctx.rotate(projectile.rotation);
+                this.ctx.shadowColor = "rgba(50, 242, 255, 0.5)";
+                this.ctx.shadowBlur = 8;
+                this.ctx.drawImage(sprite.image, sx, sy, sprite.frameWidth, sprite.frameHeight, -width * sprite.anchorX, -height * sprite.anchorY, width, height);
+                this.ctx.restore();
+            }
+            else {
+                this.ctx.save();
+                this.ctx.translate(x, y);
+                this.ctx.rotate(projectile.rotation);
+                this.ctx.fillStyle = "rgba(50, 242, 255, 0.8)";
+                this.ctx.shadowColor = "rgba(50, 242, 255, 0.6)";
+                this.ctx.shadowBlur = 10;
+                this.ctx.beginPath();
+                this.ctx.moveTo(0, -8);
+                this.ctx.lineTo(18, 0);
+                this.ctx.lineTo(0, 8);
+                this.ctx.closePath();
+                this.ctx.fill();
+                this.ctx.restore();
+            }
         }
     }
 }

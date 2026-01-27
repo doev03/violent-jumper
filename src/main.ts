@@ -163,6 +163,11 @@ type SpriteSheetAsset = SpriteSheetSpec & {
   frameHeight: number;
 };
 
+type ImageAsset = {
+  image: HTMLImageElement;
+  loaded: boolean;
+};
+
 type ClipSpec = {
   /** Row index (0-based). */
   row: number;
@@ -251,10 +256,10 @@ const STORAGE_KEYS = {
 
 const DEFAULT_CONFIG: GameConfig = {
   physics: {
-    gravity: 14,
+    gravity: 10,
   },
   throwing: {
-    speed: 19.5,
+    speed: 10.0,
     cooldown: 0.2,
   },
   platform: {
@@ -268,7 +273,7 @@ const DEFAULT_CONFIG: GameConfig = {
     minPeak: 1.6,
   },
   human: {
-    jumpThreshold: 6.2,
+    jumpThreshold: 1.6,
     jumpDuration: 0.55,
     jumpArc: 0.35,
     worryDuration: 0.6,
@@ -294,8 +299,8 @@ const HUMAN_ANIM: HumanAnimSpec = {
     src: "assets/human-sheet-11.png",
     columns: 7,
     rows: 2,
-    width: 0.36 * 2.55,
-    height: 0.62 * 2,
+    width: 1,
+    height: 1.3,
     anchorX: 0.5,
     anchorY: 1.05,
   },
@@ -327,11 +332,11 @@ const HUMAN_ANIM: HumanAnimSpec = {
 // NOTE: Update columns/clip lengths to match the hero sprite sheet grid.
 const HERO_ANIM: HeroAnimSpec = {
   sheet: {
-    src: "assets/hero-sheet-2.png",
+    src: "assets/hero-sheet-3.png",
     columns: 3,
     rows: 5,
-    width: 1.75,
-    height: 1.75,
+    width: 1.5,
+    height: 1.5,
     anchorX: 0.5,
     anchorY: 1,
   },
@@ -358,6 +363,7 @@ const PROJECTILE_ANIM: ProjectileAnimSpec = {
 };
 
 const PROJECTILE_ROTATION_OFFSET = Math.PI;
+const BACKGROUND_IMAGE_SRC = "assets/background-3-2.png";
 
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
@@ -466,6 +472,19 @@ const loadSpriteSheet = (spec: SpriteSheetSpec): SpriteSheetAsset => {
     console.warn(`Failed to load sprite: ${spec.src}`);
   };
   image.src = spec.src;
+  return asset;
+};
+
+const loadImage = (src: string): ImageAsset => {
+  const image = new Image();
+  const asset: ImageAsset = { image, loaded: false };
+  image.onload = () => {
+    asset.loaded = true;
+  };
+  image.onerror = () => {
+    console.warn(`Failed to load image: ${src}`);
+  };
+  image.src = src;
   return asset;
 };
 
@@ -621,6 +640,7 @@ class Game {
     hero: SpriteSheetAsset;
     projectile: SpriteSheetAsset;
   };
+  background: ImageAsset;
   humanIdleClipIndex = 0;
   humanIdleClipSource: "loop" | "oneShot" = "loop";
   humanIdleClipStartedAt = 0;
@@ -687,6 +707,7 @@ class Game {
       hero: loadSpriteSheet(HERO_ANIM.sheet),
       projectile: loadSpriteSheet(PROJECTILE_ANIM.sheet),
     };
+    this.background = loadImage(BACKGROUND_IMAGE_SRC);
 
     this.bindUi();
     this.bindSettings();
@@ -1494,58 +1515,20 @@ class Game {
   }
 
   drawBackground(): void {
-    const gradient = this.ctx.createLinearGradient(0, 0, 0, this.height);
-    gradient.addColorStop(0, "#0c1528");
-    gradient.addColorStop(0.4, "#09101f");
-    gradient.addColorStop(1, "#05070d");
-
-    this.ctx.fillStyle = gradient;
-    this.ctx.fillRect(0, 0, this.width, this.height);
-
-    const haze = this.ctx.createRadialGradient(
-      this.width * 0.2,
-      this.height * 0.2,
-      40,
-      this.width * 0.2,
-      this.height * 0.2,
-      this.width * 0.6,
-    );
-    haze.addColorStop(0, "rgba(50, 242, 255, 0.2)");
-    haze.addColorStop(1, "rgba(5, 10, 18, 0)");
-    this.ctx.fillStyle = haze;
-    this.ctx.fillRect(0, 0, this.width, this.height);
-
-    const skylineCount = 12;
-    const spacing = this.width / skylineCount;
-    const span = this.width + spacing;
-    const scroll = this.time * 18;
-    const columns = skylineCount + 2;
-    for (let i = 0; i < columns; i += 1) {
-      const worldX = i * spacing + scroll;
-      const x = (worldX % span) - spacing;
-      const wrapCount = Math.floor(worldX / span);
-      const seed = i + wrapCount * columns;
-      const buildingHeight = 40 + pseudoRandom(seed) * 80;
-      this.ctx.fillStyle = "rgba(11, 20, 35, 0.85)";
-      this.ctx.fillRect(
-        x - 20,
-        this.height - buildingHeight - 60,
-        40,
-        buildingHeight,
+    if (this.background.loaded) {
+      const image = this.background.image;
+      const scale = Math.max(
+        this.width / image.width,
+        this.height / image.height,
       );
-
-      this.ctx.fillStyle = "rgba(50, 242, 255, 0.25)";
-      this.ctx.fillRect(x - 16, this.height - buildingHeight - 50, 32, 3);
-    }
-
-    this.ctx.strokeStyle = "rgba(50, 242, 255, 0.12)";
-    this.ctx.lineWidth = 1;
-    const gridStart = this.height * 0.55;
-    for (let y = gridStart; y < this.height; y += 30) {
-      this.ctx.beginPath();
-      this.ctx.moveTo(0, y);
-      this.ctx.lineTo(this.width, y + 20);
-      this.ctx.stroke();
+      const drawWidth = image.width * scale;
+      const drawHeight = image.height * scale;
+      const offsetX = (this.width - drawWidth) / 2;
+      const offsetY = (this.height - drawHeight) / 2;
+      this.ctx.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+    } else {
+      this.ctx.fillStyle = "#070a12";
+      this.ctx.fillRect(0, 0, this.width, this.height);
     }
   }
 
