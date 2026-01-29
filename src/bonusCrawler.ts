@@ -95,6 +95,7 @@ export class BonusCrawlerFeature implements GameFeature {
       const added = game.addPlatforms(game.config.features.bonusReward);
       const targets = game.getPlatformIconTargets(added);
       this.spawnIcicles(game, targets);
+      game.stickProjectile(projectile);
       return true;
     }
 
@@ -138,7 +139,7 @@ export class BonusCrawlerFeature implements GameFeature {
       } else {
         ctx.save();
         ctx.translate(centerX, screenY);
-        ctx.fillStyle = "rgba(57, 245, 154, 0.85)";
+        ctx.fillStyle = "rgba(76, 205, 252, 0.85)";
         ctx.beginPath();
         ctx.ellipse(0, 0, width * 0.35, height * 0.3, 0, 0, Math.PI * 2);
         ctx.fill();

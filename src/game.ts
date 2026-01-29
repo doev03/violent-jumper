@@ -530,6 +530,24 @@ export class Game implements GameLike {
     return added;
   }
 
+  stickProjectile(projectile: Projectile): void {
+    const platformY = Math.max(0, projectile.pos.y);
+    const stuckFrame = clipFrameIndex(
+      PROJECTILE_ANIM.flight,
+      Math.max(0, PROJECTILE_ANIM.flight.length - 1),
+      PROJECTILE_ANIM.sheet.columns,
+    );
+    this.platforms.push({
+      id: Date.now() + Math.random(),
+      y: platformY,
+      createdAt: this.time,
+      spriteFrame: stuckFrame,
+      rotation: projectile.rotation,
+    });
+    projectile.active = false;
+    this.handlePlatformPlacement(platformY);
+  }
+
   getPlatformIconTargets(amount: number): { x: number; y: number }[] {
     if (amount <= 0) {
       return [];
@@ -688,21 +706,7 @@ export class Game implements GameLike {
       }
 
       if (projectile.pos.x <= wallX) {
-        const platformY = Math.max(0, projectile.pos.y);
-        const stuckFrame = clipFrameIndex(
-          PROJECTILE_ANIM.flight,
-          Math.max(0, PROJECTILE_ANIM.flight.length - 1),
-          PROJECTILE_ANIM.sheet.columns,
-        );
-        this.platforms.push({
-          id: Date.now() + Math.random(),
-          y: platformY,
-          createdAt: this.time,
-          spriteFrame: stuckFrame,
-          rotation: projectile.rotation,
-        });
-        projectile.active = false;
-        this.handlePlatformPlacement(platformY);
+        this.stickProjectile(projectile);
       }
 
       if (projectile.pos.y < -2 || projectile.pos.y > this.cameraY + this.viewHeightMeters + 6) {
@@ -1096,7 +1100,7 @@ export class Game implements GameLike {
           this.ctx.rotate(platform.rotation);
         }
         this.ctx.scale(grow, grow);
-        this.ctx.shadowColor = `rgba(57, 245, 154, ${0.35 + glow * 0.25})`;
+        this.ctx.shadowColor = `rgba(76, 205, 252, ${0.35 + glow * 0.25})`;
         this.ctx.shadowBlur = 12;
         this.ctx.drawImage(
           sprite.image,
@@ -1117,8 +1121,8 @@ export class Game implements GameLike {
         const growHeight = height * grow;
 
         const glow = Math.min(1, (this.time - platform.createdAt) * 3);
-        this.ctx.fillStyle = `rgba(57, 245, 154, ${0.6 + glow * 0.2})`;
-        this.ctx.shadowColor = "rgba(57, 245, 154, 0.6)";
+        this.ctx.fillStyle = `rgba(76, 205, 252, ${0.6 + glow * 0.2})`;
+        this.ctx.shadowColor = "rgba(76, 205, 252, 0.6)";
         this.ctx.shadowBlur = 12;
         this.ctx.fillRect(x, y - growHeight / 2, growWidth, growHeight);
 
@@ -1221,7 +1225,7 @@ export class Game implements GameLike {
     } else {
       this.ctx.translate(0, -bodyHeight * 0.6);
 
-      this.ctx.fillStyle = "rgba(57, 245, 154, 0.8)";
+      this.ctx.fillStyle = "rgba(76, 205, 252, 0.8)";
       this.ctx.fillRect(-bodyWidth / 2, -bodyHeight * 0.1, bodyWidth, bodyHeight * 0.2);
 
       this.ctx.fillStyle = "rgba(50, 242, 255, 0.85)";

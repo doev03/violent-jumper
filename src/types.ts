@@ -136,6 +136,7 @@ export type GameLike = {
   meterPx: number;
   addPlatforms: (amount: number) => number;
   getPlatformIconTargets: (amount: number) => Vec2[];
+  stickProjectile: (projectile: Projectile) => void;
   worldToScreenY: (y: number) => number;
   screenToWorldY: (screenY: number) => number;
 };
