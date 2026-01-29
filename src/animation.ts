@@ -58,7 +58,7 @@ export const HERO_ANIM: HeroAnimSpec = {
   },
   idleUp: { row: 0, start: 0, length: 3, fps: 6 },
   idleDown: { row: 1, start: 0, length: 3, fps: 6 },
-  turn: { row: 2, start: 0, length: 1, fps: 1 },
+  turn: { row: 2, start: 0, length: 1, fps: 3 },
   bounce: { row: 3, start: 0, length: 3, fps: 12 },
   throwCharge: { row: 4, start: 0, length: 1, fps: 1 },
   throwRelease: { row: 4, start: 1, length: 2, fps: 12 },
