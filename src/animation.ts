@@ -48,7 +48,7 @@ export const HUMAN_ANIM: HumanAnimSpec = {
 // NOTE: Update columns/clip lengths to match the hero sprite sheet grid.
 export const HERO_ANIM: HeroAnimSpec = {
   sheet: {
-    src: "assets/hero-sheet-3.png",
+    src: "assets/hero-sheet-4.png",
     columns: 3,
     rows: 5,
     width: 1.5,
@@ -59,9 +59,9 @@ export const HERO_ANIM: HeroAnimSpec = {
   idleUp: { row: 0, start: 0, length: 3, fps: 6 },
   idleDown: { row: 1, start: 0, length: 3, fps: 6 },
   turn: { row: 2, start: 0, length: 1, fps: 1 },
-  bounce: { row: 3, start: 0, length: 3, fps: 10 },
+  bounce: { row: 3, start: 0, length: 3, fps: 12 },
   throwCharge: { row: 4, start: 0, length: 1, fps: 1 },
-  throwRelease: { row: 4, start: 1, length: 1, fps: 1 },
+  throwRelease: { row: 4, start: 1, length: 2, fps: 12 },
 };
 
 // NOTE: Update columns/clip lengths to match the projectile sprite sheet grid.

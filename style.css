@@ -203,7 +203,7 @@ body {
 
 .overlay-actions button {
   background: rgba(18, 28, 42, 0.9);
-  border: 1px solid rgba(57, 245, 154, 0.6);
+  border: 1px solid rgba(76, 205, 252, 0.6);
   color: var(--neon-green);
   padding: 10px 22px;
   border-radius: 12px;
@@ -212,7 +212,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.2em;
   cursor: pointer;
-  box-shadow: 0 0 18px rgba(57, 245, 154, 0.25);
+  box-shadow: 0 0 18px rgba(76, 205, 252, 0.25);
 }
 
 .overlay-actions button:nth-child(2) {
