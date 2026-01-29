@@ -1047,8 +1047,8 @@ export class Game implements GameLike {
   render(): void {
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.drawBackground();
-    this.drawWall();
     this.drawPlatforms();
+    this.drawWall();
     this.drawTrampoline();
     this.drawHero();
     this.drawHuman();
@@ -1099,7 +1099,6 @@ export class Game implements GameLike {
         const worldBottom = this.cameraY + this.originY / this.meterPx;
         const startRow = Math.floor(worldTop / rowHeightMeters) - 1;
         const endRow = Math.ceil(worldBottom / rowHeightMeters) + 1;
-        const blendHeight = Math.max(10, tileHeight * 0.12);
         for (let row = startRow; row <= endRow; row += 1) {
           const worldY = row * rowHeightMeters;
           const y = this.worldToScreenY(worldY);
@@ -1107,20 +1106,6 @@ export class Game implements GameLike {
           const tile = tiles[tileIndex];
           const tileImage = tile && tile.loaded ? tile.image : image;
           this.ctx.drawImage(tileImage, 0, y, wallWidth, tileHeight);
-          if (row > startRow) {
-            const seamY = y;
-            const gradient = this.ctx.createLinearGradient(
-              0,
-              seamY - blendHeight / 2,
-              0,
-              seamY + blendHeight / 2,
-            );
-            gradient.addColorStop(0, "rgba(7, 10, 14, 0)");
-            gradient.addColorStop(0.5, "rgba(7, 10, 14, 0.35)");
-            gradient.addColorStop(1, "rgba(7, 10, 14, 0)");
-            this.ctx.fillStyle = gradient;
-            this.ctx.fillRect(0, seamY - blendHeight / 2, wallWidth, blendHeight);
-          }
         }
       } else {
         this.ctx.drawImage(image, 0, 0, wallWidth, this.height);
@@ -1134,18 +1119,14 @@ export class Game implements GameLike {
       this.ctx.restore();
     }
 
-    // Subtle separation shadow into the play space.
-    this.ctx.save();
-    this.ctx.fillStyle = "rgba(0, 0, 0, 0.20)";
-    this.ctx.fillRect(wallWidth, 0, 14, this.height);
-    this.ctx.restore();
   }
 
   drawPlatforms(): void {
     this.ctx.save();
     const sprite = this.sprites.projectile;
     for (const platform of this.platforms) {
-      const x = this.wallScreenX + 12;
+      const embed = this.meterPx * 0.12;
+      const x = this.wallScreenX + 10 - embed;
       const y = this.worldToScreenY(platform.y);
       const growTime = 0.22;
       const growProgress = clamp((this.time - platform.createdAt) / growTime, 0, 1);
@@ -1313,7 +1294,7 @@ export class Game implements GameLike {
   }
 
   drawHuman(): void {
-    const x = this.worldToScreenX(0.55);
+    const x = this.worldToScreenX(0.45);
     const y = this.worldToScreenY(this.human.y);
     const wobble =
       this.human.state === "worry" ? Math.sin(this.time * 12) * 3 : Math.sin(this.time * 2) * 1.5;

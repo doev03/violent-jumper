@@ -15,8 +15,8 @@ export const HUMAN_ANIM: HumanAnimSpec = {
     src: "assets/human-sheet-11.png",
     columns: 7,
     rows: 2,
-    width: 1,
-    height: 1.3,
+    width: 0.8,
+    height: 1.2,
     anchorX: 0.5,
     anchorY: 1.05,
   },
@@ -67,10 +67,10 @@ export const HERO_ANIM: HeroAnimSpec = {
 // NOTE: Update columns/clip lengths to match the projectile sprite sheet grid.
 export const PROJECTILE_ANIM: ProjectileAnimSpec = {
   sheet: {
-    src: "assets/projectile-sheet-0.png",
+    src: "assets/projectile-sheet-1.png",
     columns: 5,
     rows: 1,
-    width: 1.5,
+    width: 1.6,
     height: 0.5,
     anchorX: 0.1,
     anchorY: 0.5,
