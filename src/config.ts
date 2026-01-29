@@ -26,6 +26,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   },
   human: {
     jumpThreshold: 2.0,
+    renderOffset: 0.08,
     jumpDuration: 0.6,
     jumpArc: 0.7,
     worryDuration: 0.6,

@@ -412,7 +412,7 @@ export class Game implements GameLike {
     this.heroTurnActive = false;
     this.heroPrevVelY = 0;
 
-    const initialPlatformY = this.config.human.jumpThreshold + 0.15;
+    const initialPlatformY = this.config.human.jumpThreshold;
     this.human.y = initialPlatformY;
     this.human.state = "idle";
     this.human.jumpPhase = "prep";
@@ -1242,7 +1242,7 @@ export class Game implements GameLike {
 
   drawHuman(): void {
     const x = this.worldToScreenX(0.45);
-    const y = this.worldToScreenY(this.human.y);
+    const y = this.worldToScreenY(this.human.y + this.config.human.renderOffset);
     const wobble =
       this.human.state === "worry" ? Math.sin(this.time * 12) * 3 : Math.sin(this.time * 2) * 1.5;
     const sprite = this.sprites.human;

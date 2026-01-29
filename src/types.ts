@@ -42,6 +42,8 @@ export type GameConfig = {
   human: {
     /** Max vertical distance to auto-jump (m). */
     jumpThreshold: number;
+    /** Visual offset above the platform (m). */
+    renderOffset: number;
     /** Jump animation duration (s). */
     jumpDuration: number;
     /** Extra arc height added during jump (m). */
