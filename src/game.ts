@@ -53,6 +53,8 @@ type SettingsElements = {
 export class Game implements GameLike {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
+  fxCanvas: HTMLCanvasElement | null;
+  fxCtx: CanvasRenderingContext2D | null = null;
   config: GameConfig;
   mode: GameMode = "playing";
 
@@ -126,13 +128,23 @@ export class Game implements GameLike {
   heroTurnActive = false;
   heroPrevVelY = 0;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, fxCanvas?: HTMLCanvasElement | null) {
     this.canvas = canvas;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       throw new Error("Canvas not supported");
     }
     this.ctx = ctx;
+    this.fxCanvas = fxCanvas ?? null;
+    if (this.fxCanvas) {
+      const fxCtx = this.fxCanvas.getContext("2d");
+      if (!fxCtx) {
+        throw new Error("FX canvas not supported");
+      }
+      this.fxCtx = fxCtx;
+    } else {
+      this.fxCtx = null;
+    }
 
     this.config = this.loadConfig();
 
@@ -460,6 +472,11 @@ export class Game implements GameLike {
     this.canvas.width = this.width * dpr;
     this.canvas.height = this.height * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (this.fxCanvas && this.fxCtx) {
+      this.fxCanvas.width = this.width * dpr;
+      this.fxCanvas.height = this.height * dpr;
+      this.fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
 
     this.meterPx = clamp(this.width * 0.12, 90, 150);
     this.wallScreenX = clamp(this.width * 0.08, 50, 110);
@@ -992,6 +1009,14 @@ export class Game implements GameLike {
 
     for (const feature of this.features) {
       feature.render(this.ctx, this);
+    }
+
+    const overlayCtx = this.fxCtx ?? this.ctx;
+    if (this.fxCtx) {
+      this.fxCtx.clearRect(0, 0, this.width, this.height);
+    }
+    for (const feature of this.features) {
+      feature.renderOverlay?.(overlayCtx, this);
     }
   }
 

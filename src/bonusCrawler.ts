@@ -107,73 +107,15 @@ export class BonusCrawlerFeature implements GameFeature {
       return;
     }
 
-    if (this.state !== "hidden") {
-      const screenY = game.worldToScreenY(this.y);
-      const sprite = this.state === "dying" ? this.deathSprite : this.idleSprite;
-      const frames = this.state === "dying"
-        ? BONUS_TUNING.deathFrames
-        : BONUS_TUNING.idleFrames;
-      const fps = this.state === "dying" ? BONUS_TUNING.deathFps : BONUS_TUNING.idleFps;
-      const frameIndex = this.state === "dying"
-        ? Math.min(frames - 1, Math.floor(this.deathTime * fps))
-        : Math.floor(this.idleTime * fps) % frames;
-      const frameWidth = sprite.loaded ? sprite.image.width / frames : 64;
-      const heightRatio = sprite.loaded ? sprite.image.height / frameWidth : 1;
-      const width = BONUS_TUNING.sizeMeters * game.meterPx;
-      const height = width * heightRatio;
-      const centerX = game.wallScreenX + width * 0.05;
+    this.renderCrawler(ctx, game);
+  }
 
-      if (sprite.loaded && sprite.image.width > 0) {
-        const sx = frameIndex * frameWidth;
-        ctx.drawImage(
-          sprite.image,
-          sx,
-          0,
-          frameWidth,
-          sprite.image.height,
-          centerX - width / 2,
-          screenY - height / 2,
-          width,
-          height,
-        );
-      } else {
-        ctx.save();
-        ctx.translate(centerX, screenY);
-        ctx.fillStyle = "rgba(76, 205, 252, 0.85)";
-        ctx.beginPath();
-        ctx.ellipse(0, 0, width * 0.35, height * 0.3, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
+  renderOverlay(ctx: CanvasRenderingContext2D, game: GameLike): void {
+    if (this.icicles.length === 0) {
+      return;
     }
 
-    if (this.icicles.length > 0) {
-      const sprite = this.counterSprite;
-      const hasSprite = sprite.loaded && sprite.image.width > 0;
-      const ratio = hasSprite ? sprite.image.height / sprite.image.width : 2;
-      for (const icicle of this.icicles) {
-        const t = clamp(icicle.t / icicle.duration, 0, 1);
-        const eased = easeInOut(t);
-        const x = lerp(icicle.startX, icicle.endX, eased);
-        const y = lerp(icicle.startY, icicle.endY, eased) + Math.sin(t * Math.PI) * icicle.arc;
-        const width = 14;
-        const height = width * ratio;
-        if (hasSprite) {
-          ctx.drawImage(
-            sprite.image,
-            x - width / 2,
-            y - height / 2,
-            width,
-            height,
-          );
-        } else {
-          ctx.save();
-          ctx.fillStyle = "rgba(230, 244, 255, 0.9)";
-          ctx.fillRect(x - width / 2, y - height / 2, width, height);
-          ctx.restore();
-        }
-      }
-    }
+    this.renderIcicles(ctx);
   }
 
   onReset(game: GameLike): void {
@@ -201,5 +143,77 @@ export class BonusCrawlerFeature implements GameFeature {
       duration: BONUS_TUNING.icicleDuration + index * 0.05,
       arc: BONUS_TUNING.icicleArc,
     }));
+  }
+
+  private renderCrawler(ctx: CanvasRenderingContext2D, game: GameLike): void {
+    if (this.state === "hidden") {
+      return;
+    }
+
+    const screenY = game.worldToScreenY(this.y);
+    const sprite = this.state === "dying" ? this.deathSprite : this.idleSprite;
+    const frames = this.state === "dying"
+      ? BONUS_TUNING.deathFrames
+      : BONUS_TUNING.idleFrames;
+    const fps = this.state === "dying" ? BONUS_TUNING.deathFps : BONUS_TUNING.idleFps;
+    const frameIndex = this.state === "dying"
+      ? Math.min(frames - 1, Math.floor(this.deathTime * fps))
+      : Math.floor(this.idleTime * fps) % frames;
+    const frameWidth = sprite.loaded ? sprite.image.width / frames : 64;
+    const heightRatio = sprite.loaded ? sprite.image.height / frameWidth : 1;
+    const width = BONUS_TUNING.sizeMeters * game.meterPx;
+    const height = width * heightRatio;
+    const centerX = game.wallScreenX + width * 0.05;
+
+    if (sprite.loaded && sprite.image.width > 0) {
+      const sx = frameIndex * frameWidth;
+      ctx.drawImage(
+        sprite.image,
+        sx,
+        0,
+        frameWidth,
+        sprite.image.height,
+        centerX - width / 2,
+        screenY - height / 2,
+        width,
+        height,
+      );
+    } else {
+      ctx.save();
+      ctx.translate(centerX, screenY);
+      ctx.fillStyle = "rgba(76, 205, 252, 0.85)";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, width * 0.35, height * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  private renderIcicles(ctx: CanvasRenderingContext2D): void {
+    const sprite = this.counterSprite;
+    const hasSprite = sprite.loaded && sprite.image.width > 0;
+    const ratio = hasSprite ? sprite.image.height / sprite.image.width : 2;
+    for (const icicle of this.icicles) {
+      const t = clamp(icicle.t / icicle.duration, 0, 1);
+      const eased = easeInOut(t);
+      const x = lerp(icicle.startX, icicle.endX, eased);
+      const y = lerp(icicle.startY, icicle.endY, eased) + Math.sin(t * Math.PI) * icicle.arc;
+      const width = 14;
+      const height = width * ratio;
+      if (hasSprite) {
+        ctx.drawImage(
+          sprite.image,
+          x - width / 2,
+          y - height / 2,
+          width,
+          height,
+        );
+      } else {
+        ctx.save();
+        ctx.fillStyle = "rgba(230, 244, 255, 0.9)";
+        ctx.fillRect(x - width / 2, y - height / 2, width, height);
+        ctx.restore();
+      }
+    }
   }
 }

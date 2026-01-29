@@ -147,6 +147,8 @@ export type GameFeature = {
   update: (dt: number, game: GameLike) => void;
   /** Draw hook; rendering is in screen space. */
   render: (ctx: CanvasRenderingContext2D, game: GameLike) => void;
+  /** Optional overlay draw hook (above HTML UI when available). */
+  renderOverlay?: (ctx: CanvasRenderingContext2D, game: GameLike) => void;
   /** Called for each active projectile; return true to consume it. */
   onProjectile?: (projectile: Projectile, game: GameLike) => boolean;
   /** Reset hook called when a new run starts. */

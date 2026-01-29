@@ -32,7 +32,8 @@ const start = (): void => {
   if (!canvas) {
     return;
   }
-  const game = new Game(canvas);
+  const fxCanvas = document.getElementById("fx-canvas") as HTMLCanvasElement | null;
+  const game = new Game(canvas, fxCanvas);
   requestAnimationFrame(game.tick);
 };
 

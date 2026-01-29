@@ -25,9 +25,10 @@ src/
   animation.ts   Animation clips, sprite sheet specs, and clip helpers.
   assets.ts      Image loading helpers + background asset.
   config.ts      GameConfig defaults and config persistence helpers.
+  game.ts        Game loop, rendering, input, and gameplay state.
   types.ts       Shared types for entities and config.
   utils.ts       Math + formatting helpers.
-  main.ts        Game loop, rendering, input, and gameplay state.
+  main.ts        Bootstrap + Telegram init.
 ```
 
 Build output goes to `dist/` and is loaded by `index.html`.
@@ -96,10 +97,16 @@ The background is a single cover image controlled by `BACKGROUND_IMAGE_SRC` in `
 
 Gameplay hooks live in `GameFeature` (see `src/types.ts`). To add new features:
 
-1. Create a new class implementing `GameFeature` in `src/main.ts`.
+1. Create a new class implementing `GameFeature` in a new `src/*.ts` file (see `src/bonusCrawler.ts`).
 2. Push it into `this.features` inside `resetGame()`.
 
 The existing `BonusCrawlerFeature` shows how to add a moving target that rewards extra platforms.
+
+## Rendering Layers
+
+- `#game-canvas` draws the world.
+- `#ui-overlay` holds DOM UI panels.
+- `#fx-canvas` draws overlay effects above the UI (via `GameFeature.renderOverlay`).
 
 ## Telegram
 

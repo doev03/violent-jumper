@@ -47,6 +47,11 @@ src/
   main.ts        Bootstrap + Telegram init.
 ```
 
+## Rendering Layers
+- `#game-canvas` draws the world.
+- `#ui-overlay` hosts DOM UI panels.
+- `#fx-canvas` draws overlay effects above the UI (via `GameFeature.renderOverlay`).
+
 ## Key Asset Requirements
 - Sprite sheets: `columns`, `rows`, `width`, `height`, `anchorX`, `anchorY` (world meters).
 - Animation clips: `row`, `start`, `length`, `fps`.
