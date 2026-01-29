@@ -15,7 +15,7 @@ export const DEFAULT_CONFIG: GameConfig = {
     cooldown: 0.2,
   },
   platform: {
-    count: 12,
+    count: 10,
     width: 0.85,
     height: 0.18,
   },
@@ -38,7 +38,7 @@ export const DEFAULT_CONFIG: GameConfig = {
     bonusCrawler: true,
     bonusReward: 3,
     bonusSpeed: 1.7,
-    bonusRespawn: 3,
+    bonusRespawn: 2,
   },
   ui: {
     promptDuration: 2,

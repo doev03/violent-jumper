@@ -1099,6 +1099,7 @@ export class Game implements GameLike {
         const worldBottom = this.cameraY + this.originY / this.meterPx;
         const startRow = Math.floor(worldTop / rowHeightMeters) - 1;
         const endRow = Math.ceil(worldBottom / rowHeightMeters) + 1;
+        const blendHeight = Math.max(10, tileHeight * 0.12);
         for (let row = startRow; row <= endRow; row += 1) {
           const worldY = row * rowHeightMeters;
           const y = this.worldToScreenY(worldY);
@@ -1106,6 +1107,20 @@ export class Game implements GameLike {
           const tile = tiles[tileIndex];
           const tileImage = tile && tile.loaded ? tile.image : image;
           this.ctx.drawImage(tileImage, 0, y, wallWidth, tileHeight);
+          if (row > startRow) {
+            const seamY = y;
+            const gradient = this.ctx.createLinearGradient(
+              0,
+              seamY - blendHeight / 2,
+              0,
+              seamY + blendHeight / 2,
+            );
+            gradient.addColorStop(0, "rgba(7, 10, 14, 0)");
+            gradient.addColorStop(0.5, "rgba(7, 10, 14, 0.35)");
+            gradient.addColorStop(1, "rgba(7, 10, 14, 0)");
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(0, seamY - blendHeight / 2, wallWidth, blendHeight);
+          }
         }
       } else {
         this.ctx.drawImage(image, 0, 0, wallWidth, this.height);

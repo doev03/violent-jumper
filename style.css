@@ -91,18 +91,19 @@ body {
 }
 
 .platform-icon {
-  width: 10px;
-  height: 18px;
-  border-radius: 4px;
-  border: 1px solid rgba(50, 242, 255, 0.6);
-  box-shadow: 0 0 6px rgba(50, 242, 255, 0.45), inset 0 0 6px rgba(50, 242, 255, 0.4);
-  background: linear-gradient(135deg, rgba(50, 242, 255, 0.4), rgba(50, 242, 255, 0.1));
+  width: 12px;
+  height: 24px;
+  background-image: url("assets/platform-counter.png");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
   transition: transform 0.2s ease, opacity 0.2s ease;
 }
 
 .platform-icon.used {
-  opacity: 0.25;
-  transform: scale(0.9);
+  background-image: url("assets/platform-counter-empty.png");
+  opacity: 0.6;
+  transform: scale(0.92);
 }
 
 #score-value {
