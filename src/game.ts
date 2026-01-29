@@ -613,7 +613,10 @@ export class Game implements GameLike {
   }
 
   addPlatforms(amount: number): void {
-    this.platformsLeft += amount;
+    this.platformsLeft = Math.min(
+      this.config.platform.count,
+      this.platformsLeft + amount,
+    );
     this.refreshPlatformIcons();
   }
 
