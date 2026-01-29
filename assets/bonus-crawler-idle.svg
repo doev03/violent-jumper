@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="64" viewBox="0 0 256 64">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3dd1a5"/>
+      <stop offset="1" stop-color="#1b7f6a"/>
+    </linearGradient>
+    <linearGradient id="belly" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#aef2dc"/>
+      <stop offset="1" stop-color="#58bfa0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Frame 1 -->
+  <g transform="translate(64,0) scale(-1,1) translate(32,32) rotate(-90) scale(1,0.7) translate(-32,-32)">
+    <ellipse cx="30" cy="34" rx="18" ry="10" fill="url(#body)"/>
+    <ellipse cx="30" cy="36" rx="12" ry="6" fill="url(#belly)" opacity="0.8"/>
+    <circle cx="46" cy="30" r="6" fill="url(#body)"/>
+    <circle cx="48" cy="28" r="1.5" fill="#f6fffa"/>
+    <path d="M16 36c-10 4-14 10-14 14" fill="none" stroke="#1b7f6a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M22 44l6 4" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M36 44l6 4" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Frame 2 -->
+  <g transform="translate(128,0) scale(-1,1) translate(32,32) rotate(-90) scale(1,0.7) translate(-32,-32)">
+    <ellipse cx="30" cy="34" rx="18" ry="10" fill="url(#body)"/>
+    <ellipse cx="30" cy="36" rx="12" ry="6" fill="url(#belly)" opacity="0.8"/>
+    <circle cx="46" cy="30" r="6" fill="url(#body)"/>
+    <circle cx="48" cy="28" r="1.5" fill="#f6fffa"/>
+    <path d="M16 34c-10 2-14 6-14 10" fill="none" stroke="#1b7f6a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M22 42l6 4" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M36 44l6 2" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Frame 3 -->
+  <g transform="translate(192,0) scale(-1,1) translate(32,32) rotate(-90) scale(1,0.7) translate(-32,-32)">
+    <ellipse cx="30" cy="34" rx="18" ry="10" fill="url(#body)"/>
+    <ellipse cx="30" cy="36" rx="12" ry="6" fill="url(#belly)" opacity="0.8"/>
+    <circle cx="46" cy="30" r="6" fill="url(#body)"/>
+    <circle cx="48" cy="28" r="1.5" fill="#f6fffa"/>
+    <path d="M16 32c-10-2-14-4-14-8" fill="none" stroke="#1b7f6a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M22 40l6 2" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M36 42l6 2" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <!-- Frame 4 -->
+  <g transform="translate(256,0) scale(-1,1) translate(32,32) rotate(-90) scale(1,0.7) translate(-32,-32)">
+    <ellipse cx="30" cy="34" rx="18" ry="10" fill="url(#body)"/>
+    <ellipse cx="30" cy="36" rx="12" ry="6" fill="url(#belly)" opacity="0.8"/>
+    <circle cx="46" cy="30" r="6" fill="url(#body)"/>
+    <circle cx="48" cy="28" r="1.5" fill="#f6fffa"/>
+    <path d="M16 34c-10 2-14 6-14 10" fill="none" stroke="#1b7f6a" stroke-width="4" stroke-linecap="round"/>
+    <path d="M22 42l6 4" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+    <path d="M36 44l6 4" stroke="#165d4b" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>

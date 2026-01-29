@@ -130,8 +130,12 @@ export type GameLike = {
   maxAltitude: number;
   viewHeightMeters: number;
   wallScreenX: number;
-  addPlatforms: (amount: number) => void;
+  height: number;
+  meterPx: number;
+  addPlatforms: (amount: number) => number;
+  getPlatformIconTargets: (amount: number) => Vec2[];
   worldToScreenY: (y: number) => number;
+  screenToWorldY: (screenY: number) => number;
 };
 
 export type GameFeature = {

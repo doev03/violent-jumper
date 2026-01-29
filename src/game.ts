@@ -43,109 +43,12 @@ import {
   randRange,
   toTitleCase,
 } from "./utils.js";
+import { BonusCrawlerFeature } from "./bonusCrawler.js";
 
 type SettingsElements = {
   inputs: HTMLInputElement[];
   valueLabels: HTMLElement[];
 };
-
-class BonusCrawlerFeature implements GameFeature {
-  id = "bonus-crawler";
-  private y = 0;
-  private active = false;
-  private respawnTimer = 0;
-  private flashTime = 0;
-
-  update(dt: number, game: GameLike): void {
-    const config = game.config.features;
-    if (!config.bonusCrawler) {
-      this.active = false;
-      this.respawnTimer = 0;
-      return;
-    }
-
-    if (!this.active) {
-      this.respawnTimer -= dt;
-      if (this.respawnTimer <= 0) {
-        this.active = true;
-        this.y = -2;
-      }
-      return;
-    }
-
-    this.y += config.bonusSpeed * dt;
-    if (this.y > game.maxAltitude + game.viewHeightMeters) {
-      this.active = false;
-      this.respawnTimer = config.bonusRespawn;
-    }
-
-    if (this.flashTime > 0) {
-      this.flashTime = Math.max(0, this.flashTime - dt);
-    }
-  }
-
-  onProjectile(projectile: Projectile, game: GameLike): boolean {
-    if (!this.active) {
-      return false;
-    }
-
-    const crawlerX = 0.25;
-    const dx = projectile.pos.x - crawlerX;
-    const dy = projectile.pos.y - this.y;
-    const hitRadius = 0.35;
-    if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-      this.active = false;
-      this.flashTime = 0.35;
-      this.respawnTimer = game.config.features.bonusRespawn;
-      game.addPlatforms(game.config.features.bonusReward);
-      return true;
-    }
-
-    return false;
-  }
-
-  render(ctx: CanvasRenderingContext2D, game: GameLike): void {
-    if (!this.active && this.flashTime <= 0) {
-      return;
-    }
-
-    const wallX = game.wallScreenX;
-    const screenY = game.worldToScreenY(this.y);
-
-    ctx.save();
-    ctx.translate(wallX + 16, screenY);
-
-    const pulse = this.flashTime > 0 ? 1 + this.flashTime * 2 : 1;
-    ctx.scale(pulse, pulse);
-
-    ctx.beginPath();
-    ctx.fillStyle =
-      this.flashTime > 0
-        ? "rgba(255, 179, 71, 0.9)"
-        : "rgba(57, 245, 154, 0.9)";
-    ctx.shadowColor = ctx.fillStyle;
-    ctx.shadowBlur = 12;
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = "rgba(5, 8, 14, 0.7)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-6, -8);
-    ctx.lineTo(6, 8);
-    ctx.moveTo(6, -8);
-    ctx.lineTo(-6, 8);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  onReset(game: GameLike): void {
-    this.active = false;
-    this.respawnTimer = game.config.features.bonusRespawn;
-    this.flashTime = 0;
-  }
-}
 
 export class Game implements GameLike {
   canvas: HTMLCanvasElement;
@@ -509,7 +412,7 @@ export class Game implements GameLike {
     this.heroTurnActive = false;
     this.heroPrevVelY = 0;
 
-    const initialPlatformY = this.config.human.jumpThreshold;
+    const initialPlatformY = this.config.human.jumpThreshold + 0.15;
     this.human.y = initialPlatformY;
     this.human.state = "idle";
     this.human.jumpPhase = "prep";
@@ -572,6 +475,10 @@ export class Game implements GameLike {
     return this.originY - (y - this.cameraY) * this.meterPx;
   }
 
+  screenToWorldY(screenY: number): number {
+    return this.cameraY + (this.originY - screenY) / this.meterPx;
+  }
+
   throwPlatform(): boolean {
     const now = this.time;
     if (this.mode !== "playing") {
@@ -612,12 +519,37 @@ export class Game implements GameLike {
     return true;
   }
 
-  addPlatforms(amount: number): void {
+  addPlatforms(amount: number): number {
+    const prev = this.platformsLeft;
     this.platformsLeft = Math.min(
       this.config.platform.count,
       this.platformsLeft + amount,
     );
+    const added = Math.max(0, this.platformsLeft - prev);
     this.refreshPlatformIcons();
+    return added;
+  }
+
+  getPlatformIconTargets(amount: number): { x: number; y: number }[] {
+    if (amount <= 0) {
+      return [];
+    }
+    const icons = Array.from(this.platformIcons.children) as HTMLElement[];
+    const endIndex = Math.min(this.platformsLeft, icons.length);
+    const startIndex = Math.max(0, endIndex - amount);
+    const canvasRect = this.canvas.getBoundingClientRect();
+    const targets: { x: number; y: number }[] = [];
+    for (let i = startIndex; i < endIndex; i += 1) {
+      const rect = icons[i]?.getBoundingClientRect();
+      if (!rect) {
+        continue;
+      }
+      targets.push({
+        x: rect.left - canvasRect.left + rect.width / 2,
+        y: rect.top - canvasRect.top + rect.height / 2,
+      });
+    }
+    return targets;
   }
 
   update(dt: number): void {

@@ -8,7 +8,7 @@ export const STORAGE_KEYS = {
 
 export const DEFAULT_CONFIG: GameConfig = {
   physics: {
-    gravity: 14,
+    gravity: 10,
   },
   throwing: {
     speed: 10.0,
