@@ -38,7 +38,7 @@ export const DEFAULT_CONFIG: GameConfig = {
     bonusCrawler: true,
     bonusReward: 3,
     bonusSpeed: 1.7,
-    bonusRespawn: 4,
+    bonusRespawn: 1,
   },
   ui: {
     promptDuration: 2,

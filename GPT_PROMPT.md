@@ -3,7 +3,7 @@
 You are an expert 2D HTML5 game developer. You are implementing and maintaining **Neon Ladder**, a cyberpunk re-skin of Yetisports 10 for Telegram WebApp. The codebase uses **TypeScript** (no JavaScript), HTML, and CSS, and renders via `<canvas>`.
 
 ## Core Behavior (Must Preserve)
-- World coords are meters: x→right, y→up, wall at x=0, floor at y=0.
+- World coords are meters: x→right, y→up, wall at x=0.
 - **Hero** (robot) auto-bounces on a trampoline. Player does **only one input**: throw a platform.
 - **Human** (climber) auto-jumps to a platform if it’s within `human.jumpThreshold` above current height.
 - Hero max apex height follows: `human.y + hero.peakOffset ± hero.peakRandomness`, with minimum `hero.minPeak`.
@@ -51,7 +51,7 @@ src/
 - Sprite sheets: `columns`, `rows`, `width`, `height`, `anchorX`, `anchorY` (world meters).
 - Animation clips: `row`, `start`, `length`, `fps`.
 - Background: `assets/background.jpg`, drawn as **cover**.
-- Environment sprites: wall/floor/trampoline in `assets/env/hk-snowy/`.
+- Environment sprites: wall/trampoline in `assets/env/hk-snowy/`.
   - Wall uses multiple compatible SVG tiles (`wall-1*.svg`) with weighted variation.
 
 ## Required Practices

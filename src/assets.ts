@@ -14,7 +14,6 @@ const WALL_TILE_SOURCES = [
 export const WALL_TILE_WEIGHTS = [0.42, 0.18, 0.12, 0.12, 0.10, 0.06];
 
 const ENVIRONMENT_SOURCES = {
-  floor: "assets/env/hk-snowy/floor-1.svg",
   trampoline: "assets/env/hk-snowy/trampoline-1.svg",
 };
 
@@ -55,11 +54,9 @@ export const loadImage = (src: string): ImageAsset => {
 export const loadEnvironmentSprites = (): {
   wallTiles: ImageAsset[];
   wallWeights: number[];
-  floor: ImageAsset;
   trampoline: ImageAsset;
 } => ({
   wallTiles: WALL_TILE_SOURCES.map((src) => loadImage(src)),
   wallWeights: WALL_TILE_WEIGHTS,
-  floor: loadImage(ENVIRONMENT_SOURCES.floor),
   trampoline: loadImage(ENVIRONMENT_SOURCES.trampoline),
 });

@@ -34,7 +34,7 @@ Build output goes to `dist/` and is loaded by `index.html`.
 
 ## Environment Art
 
-- Wall, floor, and trampoline are sprite-based (see `assets/env/hk-snowy/`).
+- Wall and trampoline are sprite-based (see `assets/env/hk-snowy/`).
 - The wall is tiled from multiple compatible SVG tiles (`wall-1*.svg`) with weighted variation.
 
 ## ESM Notes

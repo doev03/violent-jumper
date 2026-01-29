@@ -68,7 +68,7 @@ class BonusCrawlerFeature implements GameFeature {
       this.respawnTimer -= dt;
       if (this.respawnTimer <= 0) {
         this.active = true;
-        this.y = 0;
+        this.y = -2;
       }
       return;
     }
@@ -170,7 +170,7 @@ export class Game implements GameLike {
   /** Static base platform height (m). */
   basePlatformY = 0;
   /** Trampoline ground height for the hero (m). */
-  heroGroundY = -0.5;
+  heroGroundY = 0;
 
   hero: Hero;
   human: Human;
@@ -205,7 +205,6 @@ export class Game implements GameLike {
   environment: {
     wallTiles: ImageAsset[];
     wallWeights: number[];
-    floor: ImageAsset;
     trampoline: ImageAsset;
   };
   humanIdleClipIndex = 0;
@@ -510,12 +509,13 @@ export class Game implements GameLike {
     this.heroTurnActive = false;
     this.heroPrevVelY = 0;
 
-    this.human.y = 0;
+    const initialPlatformY = this.config.human.jumpThreshold;
+    this.human.y = initialPlatformY;
     this.human.state = "idle";
     this.human.jumpPhase = "prep";
     this.human.jumpPhaseTime = 0;
-    this.human.jumpStart = this.human.y;
-    this.human.jumpTarget = this.human.y;
+    this.human.jumpStart = initialPlatformY;
+    this.human.jumpTarget = initialPlatformY;
     this.human.jumpTime = 0;
     this.human.worryTime = 0;
     this.humanIdleClipIndex = 0;
@@ -534,6 +534,19 @@ export class Game implements GameLike {
     this.closeLeaderboard();
     this.refreshPlatformIcons();
     this.updateScoreUi();
+
+    const stuckFrame = clipFrameIndex(
+      PROJECTILE_ANIM.flight,
+      Math.max(0, PROJECTILE_ANIM.flight.length - 1),
+      PROJECTILE_ANIM.sheet.columns,
+    );
+    this.platforms.push({
+      id: Date.now() + Math.random(),
+      y: initialPlatformY,
+      createdAt: this.time - 1,
+      spriteFrame: stuckFrame,
+      rotation: 0,
+    });
   }
 
   resize(): void {
@@ -1032,7 +1045,6 @@ export class Game implements GameLike {
     this.ctx.clearRect(0, 0, this.width, this.height);
     this.drawBackground();
     this.drawWall();
-    this.drawFloor();
     this.drawPlatforms();
     this.drawTrampoline();
     this.drawHero();
@@ -1124,33 +1136,6 @@ export class Game implements GameLike {
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.20)";
     this.ctx.fillRect(wallWidth, 0, 14, this.height);
     this.ctx.restore();
-  }
-
-  drawFloor(): void {
-    const asset = this.environment.floor;
-    if (!asset.loaded || asset.image.width <= 0 || asset.image.height <= 0) {
-      return;
-    }
-
-    const groundY = this.worldToScreenY(this.basePlatformY);
-    const image = asset.image;
-    const tileHeight = clamp(this.meterPx * 0.38, 34, 56);
-    const scale = tileHeight / image.height;
-    const tileWidth = image.width * scale * 1.35;
-    if (tileWidth <= 1) {
-      return;
-    }
-
-    // The "snow surface" in our tiles sits ~18px from the top in a 64px-high asset.
-    const surfaceAnchorY = 18 / 64;
-    const drawY = groundY - tileHeight * surfaceAnchorY;
-    if (drawY > this.height + tileHeight || drawY + tileHeight < -tileHeight) {
-      return;
-    }
-
-    for (let x = this.wallScreenX; x < this.width; x += tileWidth) {
-      this.ctx.drawImage(image, x, drawY, tileWidth, tileHeight);
-    }
   }
 
   drawPlatforms(): void {
