@@ -84,6 +84,8 @@ export class Game implements GameLike {
   features: GameFeature[] = [];
 
   platformsLeft = 0;
+  uiPlatformsLeft = 0;
+  pendingPlatformAdds = 0;
   score = 0;
   lastThrowAt = 0;
   time = 0;
@@ -272,6 +274,11 @@ export class Game implements GameLike {
               this.platformsLeft,
               Math.floor(nextValue),
             );
+            this.uiPlatformsLeft = Math.min(this.uiPlatformsLeft, this.platformsLeft);
+            this.pendingPlatformAdds = Math.min(
+              this.pendingPlatformAdds,
+              Math.max(0, this.platformsLeft - this.uiPlatformsLeft),
+            );
           }
           this.refreshPlatformIcons();
         }
@@ -397,6 +404,8 @@ export class Game implements GameLike {
     this.config = cloneConfig();
     this.saveConfig();
     this.platformsLeft = Math.min(this.platformsLeft, this.config.platform.count);
+    this.uiPlatformsLeft = Math.min(this.uiPlatformsLeft, this.platformsLeft);
+    this.pendingPlatformAdds = 0;
     this.syncSettingsInputs();
     this.refreshPlatformIcons();
   }
@@ -410,6 +419,8 @@ export class Game implements GameLike {
     this.features.forEach((feature) => feature.onReset?.(this));
 
     this.platformsLeft = this.config.platform.count;
+    this.uiPlatformsLeft = this.platformsLeft;
+    this.pendingPlatformAdds = 0;
     this.hero.pos = { x: 3.1, y: this.heroGroundY };
     this.hero.vel = { x: 0, y: 0 };
     this.hero.squish = 0;
@@ -529,6 +540,11 @@ export class Game implements GameLike {
 
     this.projectiles.push(projectile);
     this.platformsLeft -= 1;
+    if (this.pendingPlatformAdds > 0) {
+      this.pendingPlatformAdds -= 1;
+    } else {
+      this.uiPlatformsLeft = Math.max(0, this.uiPlatformsLeft - 1);
+    }
     this.lastThrowAt = now;
     this.promptTimer = 0;
 
@@ -536,15 +552,37 @@ export class Game implements GameLike {
     return true;
   }
 
-  addPlatforms(amount: number): number {
+  addPlatforms(amount: number, deferUi = false): number {
     const prev = this.platformsLeft;
     this.platformsLeft = Math.min(
       this.config.platform.count,
       this.platformsLeft + amount,
     );
     const added = Math.max(0, this.platformsLeft - prev);
-    this.refreshPlatformIcons();
+    if (added > 0) {
+      if (deferUi) {
+        this.pendingPlatformAdds += added;
+      } else {
+        this.uiPlatformsLeft = this.platformsLeft;
+      }
+      if (!deferUi) {
+        this.refreshPlatformIcons();
+      }
+    }
     return added;
+  }
+
+  applyPendingPlatformIcons(amount: number): void {
+    if (amount <= 0 || this.pendingPlatformAdds <= 0) {
+      return;
+    }
+    const applied = Math.min(amount, this.pendingPlatformAdds);
+    this.pendingPlatformAdds -= applied;
+    this.uiPlatformsLeft = Math.min(
+      this.platformsLeft,
+      this.uiPlatformsLeft + applied,
+    );
+    this.refreshPlatformIcons();
   }
 
   stickProjectile(projectile: Projectile): void {
@@ -915,8 +953,8 @@ export class Game implements GameLike {
   }
 
   refreshPlatformIcons(): void {
-    const count = this.platformsLeft;
-    const total = Math.max(this.config.platform.count, this.platformsLeft);
+    const count = this.uiPlatformsLeft;
+    const total = this.config.platform.count;
 
     this.platformIcons.innerHTML = "";
     for (let i = 0; i < total; i += 1) {

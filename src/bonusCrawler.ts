@@ -35,7 +35,7 @@ export class BonusCrawlerFeature implements GameFeature {
   private deathTime = 0;
   private readonly idleSprite = loadImage("assets/bonus-crawler-idle.svg");
   private readonly deathSprite = loadImage("assets/bonus-crawler-death.svg");
-  private readonly counterSprite = loadImage("assets/platform-counter.png");
+  private readonly counterSprite = loadImage("assets/platform-counter.svg");
   private icicles: BonusIcicle[] = [];
 
   update(dt: number, game: GameLike): void {
@@ -74,10 +74,21 @@ export class BonusCrawlerFeature implements GameFeature {
     }
 
     if (this.icicles.length > 0) {
-      this.icicles = this.icicles.filter((icicle) => {
+      let writeIndex = 0;
+      for (let i = 0; i < this.icicles.length; i += 1) {
+        const icicle = this.icicles[i];
+        const prevT = icicle.t;
         icicle.t += dt;
-        return icicle.t < icicle.duration;
-      });
+        if (icicle.t >= icicle.duration && prevT < icicle.duration) {
+          game.applyPendingPlatformIcons(1);
+          continue;
+        }
+        if (icicle.t < icicle.duration) {
+          this.icicles[writeIndex] = icicle;
+          writeIndex += 1;
+        }
+      }
+      this.icicles.length = writeIndex;
     }
   }
 
@@ -92,7 +103,7 @@ export class BonusCrawlerFeature implements GameFeature {
       this.state = "dying";
       this.deathTime = 0;
       this.respawnTimer = game.config.features.bonusRespawn;
-      const added = game.addPlatforms(game.config.features.bonusReward);
+      const added = game.addPlatforms(game.config.features.bonusReward, true);
       const targets = game.getPlatformIconTargets(added);
       this.spawnIcicles(game, targets);
       game.stickProjectile(projectile);

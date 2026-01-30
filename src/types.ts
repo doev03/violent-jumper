@@ -134,7 +134,8 @@ export type GameLike = {
   wallScreenX: number;
   height: number;
   meterPx: number;
-  addPlatforms: (amount: number) => number;
+  addPlatforms: (amount: number, deferUi?: boolean) => number;
+  applyPendingPlatformIcons: (amount: number) => void;
   getPlatformIconTargets: (amount: number) => Vec2[];
   stickProjectile: (projectile: Projectile) => void;
   worldToScreenY: (y: number) => number;
